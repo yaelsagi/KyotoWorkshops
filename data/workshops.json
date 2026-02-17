@@ -1,0 +1,32 @@
+[
+  {
+    "id": "w1",
+    "title": "Kintsugi Basics",
+    "category": "Kintsugi",
+    "ward": "東山区",
+    "priceYen": 12000,
+    "isTop": true,
+    "lat": 35.0037,
+    "lng": 135.7788
+  },
+  {
+    "id": "w2",
+    "title": "Nihonga Intro",
+    "category": "Nihonga",
+    "ward": "左京区",
+    "priceYen": 9000,
+    "isTop": false,
+    "lat": 35.0272,
+    "lng": 135.7809
+  },
+  {
+    "id": "w3",
+    "title": "Tea Ceremony Experience",
+    "category": "Tea Ceremony",
+    "ward": "中京区",
+    "priceYen": 6000,
+    "isTop": true,
+    "lat": 35.0116,
+    "lng": 135.7681
+  }
+]
