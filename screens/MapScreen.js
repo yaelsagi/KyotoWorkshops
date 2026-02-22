@@ -1,7 +1,27 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
-import { StyleSheet, View, Text, Pressable, Platform, Animated } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+// screens/MapScreen.js
+import React, {
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import {
+  StyleSheet,
+  View,
+  Text,
+  Pressable,
+  Platform,
+  Animated,
+  ActivityIndicator,
+} from "react-native";
+import MapView from "react-native-maps";
+import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import workshopsData from "../data/workshops.json";
+import WorkshopMapMarker from "../components/WorkshopMapMarker";
+
+const FAV_KEY = "kyoto_favourites";
 
 const KYOTO_REGION = {
   latitude: 35.0116,
@@ -10,27 +30,56 @@ const KYOTO_REGION = {
   longitudeDelta: 0.08,
 };
 
-export default function MapScreen() {
+export default function MapScreen({ navigation }) {
   const workshops = useMemo(() => workshopsData, []);
   const ignoreNextMapPressRef = useRef(false);
 
   const [selected, setSelected] = useState(null);
   const [cardVisible, setCardVisible] = useState(false);
+  const [favourites, setFavourites] = useState(() => new Set());
+  const [loadingFavourites, setLoadingFavourites] = useState(true);
 
-  // Animated translateY for card: start hidden (down)
   const translateY = useRef(new Animated.Value(140)).current;
 
-  const showCard = () => {
+  // Load favourites
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(FAV_KEY);
+        if (stored) {
+          const arr = JSON.parse(stored);
+          if (Array.isArray(arr)) {
+            setFavourites(new Set(arr));
+          }
+        }
+      } catch (e) {
+        console.log("Load favourites error:", e);
+      } finally {
+        setLoadingFavourites(false);
+      }
+    };
+    load();
+  }, []);
+
+  // Persist favourites
+  useEffect(() => {
+    if (loadingFavourites) return;
+    AsyncStorage.setItem(
+      FAV_KEY,
+      JSON.stringify(Array.from(favourites))
+    ).catch(() => {});
+  }, [favourites, loadingFavourites]);
+
+  const showCard = useCallback(() => {
     setCardVisible(true);
     Animated.timing(translateY, {
       toValue: 0,
       duration: 180,
       useNativeDriver: true,
     }).start();
-  };
+  }, [translateY]);
 
-  const hideCard = () => {
-    // slide down first, then remove from state
+  const hideCard = useCallback(() => {
     Animated.timing(translateY, {
       toValue: 140,
       duration: 160,
@@ -41,12 +90,40 @@ export default function MapScreen() {
         setSelected(null);
       }
     });
-  };
+  }, [translateY]);
 
-  // If selected becomes non-null (marker tapped), show the card
   useEffect(() => {
     if (selected) showCard();
-  }, [selected]);
+  }, [selected, showCard]);
+
+  const isFavourited = useCallback(
+    (id) => favourites.has(id),
+    [favourites]
+  );
+
+  const toggleFavourite = useCallback(async (id) => {
+    try {
+      await Haptics.impactAsync(
+        Haptics.ImpactFeedbackStyle.Light
+      );
+    } catch {}
+
+    setFavourites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  if (loadingFavourites) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loadingText}>Loading…</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -62,32 +139,32 @@ export default function MapScreen() {
         }}
       >
         {workshops.map((w) => (
-          <Marker
+          <WorkshopMapMarker
             key={w.id}
-            coordinate={{ latitude: w.lat, longitude: w.lng }}
-            onPress={() => {
+            workshop={w}
+            saved={isFavourited(w.id)}
+            onSelect={(workshop) => {
               ignoreNextMapPressRef.current = true;
-              setSelected(w);
+              setSelected(workshop);
             }}
-            accessibilityLabel={`Workshop pin: ${w.title}`}
-            accessibilityHint="Opens workshop preview"
-          >
-            <Pin isTop={w.isTop} />
-          </Marker>
+          />
         ))}
       </MapView>
 
       {selected && cardVisible && (
-        <Animated.View style={[styles.card, { transform: [{ translateY }] }]}>
+        <Animated.View
+          style={[styles.card, { transform: [{ translateY }] }]}
+        >
           <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle} numberOfLines={1}>
+            <Text
+              style={styles.cardTitle}
+              numberOfLines={1}
+            >
               {selected.title}
             </Text>
 
             <Pressable
               onPress={hideCard}
-              accessibilityRole="button"
-              accessibilityLabel="Close workshop preview"
               style={styles.closeButton}
             >
               <Text style={styles.closeButtonText}>✕</Text>
@@ -99,25 +176,35 @@ export default function MapScreen() {
             {selected.isTop ? " · Top" : ""}
           </Text>
 
-          <Text style={styles.cardPrice}>¥{selected.priceYen.toLocaleString()}</Text>
+          <Text style={styles.cardPrice}>
+            ¥{selected.priceYen.toLocaleString()}
+          </Text>
 
           <View style={styles.cardActionsRow}>
             <Pressable
-              onPress={() => alert(`Open details for: ${selected.title}`)}
-              accessibilityRole="button"
-              accessibilityLabel="Open workshop details"
+              onPress={() =>
+                navigation.navigate("WorkshopDetails", {
+                  workshop: selected,
+                })
+              }
               style={styles.primaryButton}
             >
-              <Text style={styles.primaryButtonText}>Details</Text>
+              <Text style={styles.primaryButtonText}>
+                Details
+              </Text>
             </Pressable>
 
             <Pressable
-              onPress={() => alert("Saved to favourites (next step)")}
-              accessibilityRole="button"
-              accessibilityLabel="Save to favourites"
+              onPress={() =>
+                toggleFavourite(selected.id)
+              }
               style={styles.secondaryButton}
             >
-              <Text style={styles.secondaryButtonText}>♡ Save</Text>
+              <Text style={styles.secondaryButtonText}>
+                {isFavourited(selected.id)
+                  ? "♥ Saved"
+                  : "♥ Save"}
+              </Text>
             </Pressable>
           </View>
         </Animated.View>
@@ -126,46 +213,17 @@ export default function MapScreen() {
   );
 }
 
-function Pin({ isTop }) {
-  return (
-    <View
-      style={[
-        styles.pin,
-        isTop ? styles.pinTop : styles.pinNormal,
-        isTop ? styles.pinTopSize : styles.pinNormalSize,
-      ]}
-      accessible={false}
-    >
-      <View style={[styles.pinDot, isTop ? styles.pinDotTop : styles.pinDotNormal]} />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // Pin styles
-  pin: {
-    borderRadius: 999,
+  loadingContainer: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
   },
-  pinNormal: {
-    backgroundColor: "#F5F1E8",
-    borderColor: "#7A5C3D",
-  },
-  pinTop: {
-    backgroundColor: "#F2E6C9",
-    borderColor: "#B08A2E",
-  },
-  pinNormalSize: { width: 22, height: 22 },
-  pinTopSize: { width: 30, height: 30 },
-  pinDot: { borderRadius: 999 },
-  pinDotNormal: { width: 8, height: 8, backgroundColor: "#7A5C3D" },
-  pinDotTop: { width: 10, height: 10, backgroundColor: "#B08A2E" },
 
-  // Bottom card
+  loadingText: { marginTop: 10, color: "#555" },
+
   card: {
     position: "absolute",
     left: 12,
@@ -186,12 +244,20 @@ const styles = StyleSheet.create({
       android: { elevation: 6 },
     }),
   },
+
   cardHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
   },
-  cardTitle: { flex: 1, fontSize: 16, fontWeight: "700", color: "#1F1F1F" },
+
+  cardTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F1F1F",
+  },
+
   closeButton: {
     width: 34,
     height: 34,
@@ -200,12 +266,31 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#F5F1E8",
   },
-  closeButtonText: { fontSize: 16, color: "#1F1F1F" },
 
-  cardMeta: { marginTop: 6, fontSize: 13, color: "#555" },
-  cardPrice: { marginTop: 8, fontSize: 15, fontWeight: "700", color: "#1F1F1F" },
+  closeButtonText: {
+    fontSize: 16,
+    color: "#1F1F1F",
+  },
 
-  cardActionsRow: { marginTop: 12, flexDirection: "row", gap: 10 },
+  cardMeta: {
+    marginTop: 6,
+    fontSize: 13,
+    color: "#555",
+  },
+
+  cardPrice: {
+    marginTop: 8,
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1F1F1F",
+  },
+
+  cardActionsRow: {
+    marginTop: 12,
+    flexDirection: "row",
+    gap: 10,
+  },
+
   primaryButton: {
     flex: 1,
     paddingVertical: 12,
@@ -213,7 +298,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#1F1F1F",
     alignItems: "center",
   },
-  primaryButtonText: { color: "#fff", fontWeight: "700" },
+
+  primaryButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+
   secondaryButton: {
     paddingVertical: 12,
     paddingHorizontal: 14,
@@ -222,5 +312,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  secondaryButtonText: { color: "#1F1F1F", fontWeight: "700" },
+
+  secondaryButtonText: {
+    fontWeight: "700",
+    color: "#C1121F",
+  },
 });

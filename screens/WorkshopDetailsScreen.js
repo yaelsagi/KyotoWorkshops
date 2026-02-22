@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 
-export default function WorkshopDetailsScreen({ route }) {
+export default function WorkshopScreen({ route }) {
   const workshop = route?.params?.workshop;
 
   return (
