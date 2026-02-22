@@ -30,7 +30,6 @@ const KYOTO_REGION = {
 };
 
 export default function MapScreen({ navigation }) {
-  // Workshops are currently local JSON; later this can come from Firestore.
   const workshops = useMemo(() => workshopsData, []);
 
   // Used to prevent the map's onPress from immediately closing the card
@@ -38,6 +37,9 @@ export default function MapScreen({ navigation }) {
   const ignoreNextMapPressRef = useRef(false);
 
   const [selected, setSelected] = useState(null);
+
+  // Search input state (we’ll use it soon to filter markers).
+  const [searchText, setSearchText] = useState("");
 
   // In-memory Set for fast lookups; persisted as an array in AsyncStorage.
   const [favourites, setFavourites] = useState(() => new Set());
@@ -49,11 +51,6 @@ export default function MapScreen({ navigation }) {
 
   // Track whether the card is on-screen (so we don't hide it unnecessarily).
   const [cardVisible, setCardVisible] = useState(false);
-
-  // ///--- ADDED ---///
-  // Search input state (we’ll use it soon to filter markers).
-  const [searchText, setSearchText] = useState("");
-  // ///--- END ADDED ---///
 
   // Load favourites on mount (data persistence requirement).
   useEffect(() => {
@@ -79,7 +76,6 @@ export default function MapScreen({ navigation }) {
     AsyncStorage.setItem(FAV_KEY, JSON.stringify(Array.from(favourites))).catch(() => {});
   }, [favourites, loadingFavourites]);
 
-  // Show the bottom preview card with a quick slide-up animation.
   const showCard = useCallback(() => {
     setCardVisible(true);
     Animated.timing(translateY, {
@@ -89,7 +85,6 @@ export default function MapScreen({ navigation }) {
     }).start();
   }, [translateY]);
 
-  // Hide the bottom preview card with a quick slide-down animation.
   const hideCard = useCallback(() => {
     Animated.timing(translateY, {
       toValue: 140,
@@ -103,21 +98,16 @@ export default function MapScreen({ navigation }) {
     });
   }, [translateY]);
 
-  // When a workshop is selected, show the card.
   useEffect(() => {
     if (selected) showCard();
   }, [selected, showCard]);
 
-  // O(1) check for whether a workshop is saved.
   const isFavourited = useCallback((id) => favourites.has(id), [favourites]);
 
-  // Toggle favourite with subtle haptics (advanced feature + feedback).
   const toggleFavourite = useCallback(async (workshopId) => {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch (e) {
-      // Some devices/environments may not support it; ignore safely.
-    }
+    } catch (e) {}
 
     setFavourites((prev) => {
       const next = new Set(prev);
@@ -127,7 +117,6 @@ export default function MapScreen({ navigation }) {
     });
   }, []);
 
-  // Loading state: robust UI requirement.
   if (loadingFavourites) {
     return (
       <View style={styles.loadingContainer}>
@@ -139,25 +128,11 @@ export default function MapScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* ///--- ADDED --- */}
-      {/* Search bar overlay: sits above the map. */}
-      <MapSearchBar
-        value={searchText}
-        onChangeText={setSearchText}
-        onPressFilters={() => {
-          // Placeholder for later filter UI (modal/bottom sheet).
-          // For now we just dismiss keyboard so user sees the map.
-          Keyboard.dismiss();
-          alert("Filters UI (next step).");
-        }}
-      />
-      {/* ///--- END ADDED --- */}
-
       <MapView
         style={StyleSheet.absoluteFillObject}
         initialRegion={KYOTO_REGION}
         onPress={() => {
-          // Tapping the map counts as tapping outside the search bar -> hide keyboard.
+          // Tap outside search bar -> dismiss keyboard.
           Keyboard.dismiss();
 
           if (ignoreNextMapPressRef.current) {
@@ -174,18 +149,28 @@ export default function MapScreen({ navigation }) {
             workshop={w}
             saved={isFavourited(w.id)}
             onSelect={(workshop) => {
-              // Marker press can also trigger a map press right after.
-              // This flag prevents the card from instantly closing.
               ignoreNextMapPressRef.current = true;
-
-              // Dismiss keyboard when selecting a workshop.
               Keyboard.dismiss();
-
               setSelected(workshop);
             }}
           />
         ))}
       </MapView>
+
+      // ///--- FIXED ---///
+      // Render the search bar AFTER the MapView so it appears on top.
+      // Also give the wrapper a zIndex/elevation (in styles below).
+      // ///--- END FIXED ---///
+      <View style={styles.searchOverlay} pointerEvents="box-none">
+        <MapSearchBar
+          value={searchText}
+          onChangeText={setSearchText}
+          onPressFilters={() => {
+            Keyboard.dismiss();
+            alert("Filters UI (next step).");
+          }}
+        />
+      </View>
 
       {selected && cardVisible && (
         <Animated.View style={[styles.card, { transform: [{ translateY }] }]}>
@@ -246,6 +231,15 @@ const styles = StyleSheet.create({
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
   loadingText: { marginTop: 10, color: "#555" },
+
+  // ///--- ADDED ---///
+  // Ensures the search bar sits above the MapView on both iOS and Android.
+  searchOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 50,
+    elevation: 50,
+  },
+  // ///--- END ADDED ---///
 
   card: {
     position: "absolute",
