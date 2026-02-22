@@ -1,7 +1,8 @@
+// screens/WorkshopDetailsScreen.js
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 
-export default function WorkshopScreen({ route }) {
+export default function WorkshopDetailsScreen({ route }) {
   const workshop = route?.params?.workshop;
 
   return (

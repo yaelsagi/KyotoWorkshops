@@ -1,11 +1,5 @@
 // screens/MapScreen.js
-import React, {
-  useMemo,
-  useRef,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -14,12 +8,17 @@ import {
   Platform,
   Animated,
   ActivityIndicator,
+  Keyboard,
 } from "react-native";
 import MapView from "react-native-maps";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import workshopsData from "../data/workshops.json";
 import WorkshopMapMarker from "../components/WorkshopMapMarker";
+
+// ///--- ADDED ---///
+import MapSearchBar from "../components/MapSearchBar";
+// ///--- END ADDED ---///
 
 const FAV_KEY = "kyoto_favourites";
 
@@ -31,45 +30,56 @@ const KYOTO_REGION = {
 };
 
 export default function MapScreen({ navigation }) {
+  // Workshops are currently local JSON; later this can come from Firestore.
   const workshops = useMemo(() => workshopsData, []);
+
+  // Used to prevent the map's onPress from immediately closing the card
+  // right after a marker press (marker press often triggers map press too).
   const ignoreNextMapPressRef = useRef(false);
 
   const [selected, setSelected] = useState(null);
-  const [cardVisible, setCardVisible] = useState(false);
+
+  // In-memory Set for fast lookups; persisted as an array in AsyncStorage.
   const [favourites, setFavourites] = useState(() => new Set());
   const [loadingFavourites, setLoadingFavourites] = useState(true);
 
+  // Bottom card animation value:
+  // 140 = hidden below the screen, 0 = visible.
   const translateY = useRef(new Animated.Value(140)).current;
 
-  // Load favourites
+  // Track whether the card is on-screen (so we don't hide it unnecessarily).
+  const [cardVisible, setCardVisible] = useState(false);
+
+  // ///--- ADDED ---///
+  // Search input state (we’ll use it soon to filter markers).
+  const [searchText, setSearchText] = useState("");
+  // ///--- END ADDED ---///
+
+  // Load favourites on mount (data persistence requirement).
   useEffect(() => {
-    const load = async () => {
+    const loadFavourites = async () => {
       try {
         const stored = await AsyncStorage.getItem(FAV_KEY);
         if (stored) {
           const arr = JSON.parse(stored);
-          if (Array.isArray(arr)) {
-            setFavourites(new Set(arr));
-          }
+          if (Array.isArray(arr)) setFavourites(new Set(arr));
         }
       } catch (e) {
-        console.log("Load favourites error:", e);
+        console.log("Failed to load favourites", e);
       } finally {
         setLoadingFavourites(false);
       }
     };
-    load();
+    loadFavourites();
   }, []);
 
-  // Persist favourites
+  // Persist favourites whenever they change (after initial load).
   useEffect(() => {
     if (loadingFavourites) return;
-    AsyncStorage.setItem(
-      FAV_KEY,
-      JSON.stringify(Array.from(favourites))
-    ).catch(() => {});
+    AsyncStorage.setItem(FAV_KEY, JSON.stringify(Array.from(favourites))).catch(() => {});
   }, [favourites, loadingFavourites]);
 
+  // Show the bottom preview card with a quick slide-up animation.
   const showCard = useCallback(() => {
     setCardVisible(true);
     Animated.timing(translateY, {
@@ -79,6 +89,7 @@ export default function MapScreen({ navigation }) {
     }).start();
   }, [translateY]);
 
+  // Hide the bottom preview card with a quick slide-down animation.
   const hideCard = useCallback(() => {
     Animated.timing(translateY, {
       toValue: 140,
@@ -92,30 +103,31 @@ export default function MapScreen({ navigation }) {
     });
   }, [translateY]);
 
+  // When a workshop is selected, show the card.
   useEffect(() => {
     if (selected) showCard();
   }, [selected, showCard]);
 
-  const isFavourited = useCallback(
-    (id) => favourites.has(id),
-    [favourites]
-  );
+  // O(1) check for whether a workshop is saved.
+  const isFavourited = useCallback((id) => favourites.has(id), [favourites]);
 
-  const toggleFavourite = useCallback(async (id) => {
+  // Toggle favourite with subtle haptics (advanced feature + feedback).
+  const toggleFavourite = useCallback(async (workshopId) => {
     try {
-      await Haptics.impactAsync(
-        Haptics.ImpactFeedbackStyle.Light
-      );
-    } catch {}
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {
+      // Some devices/environments may not support it; ignore safely.
+    }
 
     setFavourites((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(workshopId)) next.delete(workshopId);
+      else next.add(workshopId);
       return next;
     });
   }, []);
 
+  // Loading state: robust UI requirement.
   if (loadingFavourites) {
     return (
       <View style={styles.loadingContainer}>
@@ -127,14 +139,32 @@ export default function MapScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* ///--- ADDED --- */}
+      {/* Search bar overlay: sits above the map. */}
+      <MapSearchBar
+        value={searchText}
+        onChangeText={setSearchText}
+        onPressFilters={() => {
+          // Placeholder for later filter UI (modal/bottom sheet).
+          // For now we just dismiss keyboard so user sees the map.
+          Keyboard.dismiss();
+          alert("Filters UI (next step).");
+        }}
+      />
+      {/* ///--- END ADDED --- */}
+
       <MapView
         style={StyleSheet.absoluteFillObject}
         initialRegion={KYOTO_REGION}
         onPress={() => {
+          // Tapping the map counts as tapping outside the search bar -> hide keyboard.
+          Keyboard.dismiss();
+
           if (ignoreNextMapPressRef.current) {
             ignoreNextMapPressRef.current = false;
             return;
           }
+
           if (cardVisible) hideCard();
         }}
       >
@@ -144,7 +174,13 @@ export default function MapScreen({ navigation }) {
             workshop={w}
             saved={isFavourited(w.id)}
             onSelect={(workshop) => {
+              // Marker press can also trigger a map press right after.
+              // This flag prevents the card from instantly closing.
               ignoreNextMapPressRef.current = true;
+
+              // Dismiss keyboard when selecting a workshop.
+              Keyboard.dismiss();
+
               setSelected(workshop);
             }}
           />
@@ -152,19 +188,17 @@ export default function MapScreen({ navigation }) {
       </MapView>
 
       {selected && cardVisible && (
-        <Animated.View
-          style={[styles.card, { transform: [{ translateY }] }]}
-        >
+        <Animated.View style={[styles.card, { transform: [{ translateY }] }]}>
           <View style={styles.cardHeaderRow}>
-            <Text
-              style={styles.cardTitle}
-              numberOfLines={1}
-            >
+            <Text style={styles.cardTitle} numberOfLines={1}>
               {selected.title}
             </Text>
 
             <Pressable
               onPress={hideCard}
+              accessibilityRole="button"
+              accessibilityLabel="Close workshop preview"
+              accessibilityHint="Closes the workshop preview card"
               style={styles.closeButton}
             >
               <Text style={styles.closeButtonText}>✕</Text>
@@ -176,34 +210,28 @@ export default function MapScreen({ navigation }) {
             {selected.isTop ? " · Top" : ""}
           </Text>
 
-          <Text style={styles.cardPrice}>
-            ¥{selected.priceYen.toLocaleString()}
-          </Text>
+          <Text style={styles.cardPrice}>¥{selected.priceYen.toLocaleString()}</Text>
 
           <View style={styles.cardActionsRow}>
             <Pressable
-              onPress={() =>
-                navigation.navigate("WorkshopDetails", {
-                  workshop: selected,
-                })
-              }
+              onPress={() => navigation.navigate("WorkshopDetails", { workshop: selected })}
+              accessibilityRole="button"
+              accessibilityLabel="Open workshop details"
+              accessibilityHint="Opens the full workshop details screen"
               style={styles.primaryButton}
             >
-              <Text style={styles.primaryButtonText}>
-                Details
-              </Text>
+              <Text style={styles.primaryButtonText}>Details</Text>
             </Pressable>
 
             <Pressable
-              onPress={() =>
-                toggleFavourite(selected.id)
-              }
+              onPress={() => toggleFavourite(selected.id)}
+              accessibilityRole="button"
+              accessibilityLabel={isFavourited(selected.id) ? "Remove from favourites" : "Save to favourites"}
+              accessibilityHint="Toggles whether this workshop is saved"
               style={styles.secondaryButton}
             >
               <Text style={styles.secondaryButtonText}>
-                {isFavourited(selected.id)
-                  ? "♥ Saved"
-                  : "♥ Save"}
+                {isFavourited(selected.id) ? "♥ Saved" : "♥ Save"}
               </Text>
             </Pressable>
           </View>
@@ -216,12 +244,7 @@ export default function MapScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
+  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
   loadingText: { marginTop: 10, color: "#555" },
 
   card: {
@@ -235,29 +258,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E6E2DA",
     ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
-      },
+      ios: { shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
       android: { elevation: 6 },
     }),
   },
-
-  cardHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-
-  cardTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1F1F1F",
-  },
-
+  cardHeaderRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  cardTitle: { flex: 1, fontSize: 16, fontWeight: "700", color: "#1F1F1F" },
   closeButton: {
     width: 34,
     height: 34,
@@ -266,44 +272,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#F5F1E8",
   },
-
-  closeButtonText: {
-    fontSize: 16,
-    color: "#1F1F1F",
-  },
-
-  cardMeta: {
-    marginTop: 6,
-    fontSize: 13,
-    color: "#555",
-  },
-
-  cardPrice: {
-    marginTop: 8,
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1F1F1F",
-  },
-
-  cardActionsRow: {
-    marginTop: 12,
-    flexDirection: "row",
-    gap: 10,
-  },
-
-  primaryButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "#1F1F1F",
-    alignItems: "center",
-  },
-
-  primaryButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-  },
-
+  closeButtonText: { fontSize: 16, color: "#1F1F1F" },
+  cardMeta: { marginTop: 6, fontSize: 13, color: "#555" },
+  cardPrice: { marginTop: 8, fontSize: 15, fontWeight: "700", color: "#1F1F1F" },
+  cardActionsRow: { marginTop: 12, flexDirection: "row", gap: 10 },
+  primaryButton: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: "#1F1F1F", alignItems: "center" },
+  primaryButtonText: { color: "#fff", fontWeight: "700" },
   secondaryButton: {
     paddingVertical: 12,
     paddingHorizontal: 14,
@@ -312,9 +286,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
-  secondaryButtonText: {
-    fontWeight: "700",
-    color: "#C1121F",
-  },
+  secondaryButtonText: { fontWeight: "700", color: "#C1121F" },
 });
