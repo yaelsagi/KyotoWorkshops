@@ -233,7 +233,6 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 10, color: "#555" },
 
   // ///--- ADDED ---///
-  // Ensures the search bar sits above the MapView on both iOS and Android.
   searchOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 50,
