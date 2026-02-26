@@ -34,6 +34,7 @@ export default function MapSearchBar({
             style={styles.clearButton}
             accessibilityRole="button"
             accessibilityLabel="Clear search"
+            accessibilityHint="Clears the search text"
           >
             <Text style={styles.clearText}>✕</Text>
           </Pressable>
@@ -58,7 +59,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 12,
     right: 12,
-    top: Platform.OS === "ios" ? 60 : 18, // simple safe-ish top spacing
+    top: Platform.OS === "ios" ? 60 : 18,
+
+    // ///---///
+    // Ensures the search bar is ABOVE MapView
+    zIndex: 50,
+    elevation: 50,
+    // ///---///
   },
   bar: {
     flexDirection: "row",

@@ -13,12 +13,10 @@ import {
 import MapView from "react-native-maps";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import workshopsData from "../data/workshops.json";
 import WorkshopMapMarker from "../components/WorkshopMapMarker";
-
-// ///--- ADDED ---///
 import MapSearchBar from "../components/MapSearchBar";
-// ///--- END ADDED ---///
 
 const FAV_KEY = "kyoto_favourites";
 
@@ -30,29 +28,29 @@ const KYOTO_REGION = {
 };
 
 export default function MapScreen({ navigation }) {
+  // Workshops are currently local JSON; later this can come from Firestore.
   const workshops = useMemo(() => workshopsData, []);
 
-  // Used to prevent the map's onPress from immediately closing the card
-  // right after a marker press (marker press often triggers map press too).
+  // Search input state (filters later).
+  const [searchText, setSearchText] = useState("");
+
+  // Prevent the map's onPress from firing right after a marker press.
+  // Marker press often triggers a map press too.
   const ignoreNextMapPressRef = useRef(false);
 
   const [selected, setSelected] = useState(null);
-
-  // Search input state (we’ll use it soon to filter markers).
-  const [searchText, setSearchText] = useState("");
 
   // In-memory Set for fast lookups; persisted as an array in AsyncStorage.
   const [favourites, setFavourites] = useState(() => new Set());
   const [loadingFavourites, setLoadingFavourites] = useState(true);
 
-  // Bottom card animation value:
-  // 140 = hidden below the screen, 0 = visible.
+  // Bottom card animation: 140 = hidden below screen, 0 = visible.
   const translateY = useRef(new Animated.Value(140)).current;
 
-  // Track whether the card is on-screen (so we don't hide it unnecessarily).
+  // Track whether the card is on-screen.
   const [cardVisible, setCardVisible] = useState(false);
 
-  // Load favourites on mount (data persistence requirement).
+  // Load favourites on mount.
   useEffect(() => {
     const loadFavourites = async () => {
       try {
@@ -73,9 +71,10 @@ export default function MapScreen({ navigation }) {
   // Persist favourites whenever they change (after initial load).
   useEffect(() => {
     if (loadingFavourites) return;
-    AsyncStorage.setItem(FAV_KEY, JSON.stringify(Array.from(favourites))).catch(() => {});
+    AsyncStorage.setItem(FAV_KEY, JSON.stringify(Array.from(favourites))).catch(() => { });
   }, [favourites, loadingFavourites]);
 
+  // Show the bottom preview card.
   const showCard = useCallback(() => {
     setCardVisible(true);
     Animated.timing(translateY, {
@@ -85,6 +84,7 @@ export default function MapScreen({ navigation }) {
     }).start();
   }, [translateY]);
 
+  // Hide the bottom preview card.
   const hideCard = useCallback(() => {
     Animated.timing(translateY, {
       toValue: 140,
@@ -107,7 +107,9 @@ export default function MapScreen({ navigation }) {
   const toggleFavourite = useCallback(async (workshopId) => {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch (e) {}
+    } catch (e) {
+      // Ignore if unsupported.
+    }
 
     setFavourites((prev) => {
       const next = new Set(prev);
@@ -116,6 +118,17 @@ export default function MapScreen({ navigation }) {
       return next;
     });
   }, []);
+
+  // Simple search filter (title/category/ward).
+  const visibleWorkshops = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return workshops;
+
+    return workshops.filter((w) => {
+      const haystack = `${w.title} ${w.category} ${w.ward}`.toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [workshops, searchText]);
 
   if (loadingFavourites) {
     return (
@@ -132,7 +145,6 @@ export default function MapScreen({ navigation }) {
         style={StyleSheet.absoluteFillObject}
         initialRegion={KYOTO_REGION}
         onPress={() => {
-          // Tap outside search bar -> dismiss keyboard.
           Keyboard.dismiss();
 
           if (ignoreNextMapPressRef.current) {
@@ -143,13 +155,15 @@ export default function MapScreen({ navigation }) {
           if (cardVisible) hideCard();
         }}
       >
-        {workshops.map((w) => (
+        {visibleWorkshops.map((w) => (
           <WorkshopMapMarker
             key={w.id}
             workshop={w}
             saved={isFavourited(w.id)}
             onSelect={(workshop) => {
+              // Prevent map onPress from immediately firing after marker press.
               ignoreNextMapPressRef.current = true;
+
               Keyboard.dismiss();
               setSelected(workshop);
             }}
@@ -157,20 +171,19 @@ export default function MapScreen({ navigation }) {
         ))}
       </MapView>
 
-      // ///--- FIXED ---///
-      // Render the search bar AFTER the MapView so it appears on top.
-      // Also give the wrapper a zIndex/elevation (in styles below).
-      // ///--- END FIXED ---///
-      <View style={styles.searchOverlay} pointerEvents="box-none">
-        <MapSearchBar
-          value={searchText}
-          onChangeText={setSearchText}
-          onPressFilters={() => {
-            Keyboard.dismiss();
-            alert("Filters UI (next step).");
-          }}
-        />
-      </View>
+      {/* ///---///
+          ADDED: Render search bar AFTER the MapView so it is visually on top.
+          Also has zIndex/elevation in its own styles.
+          ///---/// */}
+      <MapSearchBar
+        value={searchText}
+        onChangeText={setSearchText}
+        onPressFilters={() => {
+          // eslint-disable-next-line no-alert
+          alert("Filters screen/modal comes next.");
+        }}
+      />
+      {/* ///---/// END ADDED ///---/// */}
 
       {selected && cardVisible && (
         <Animated.View style={[styles.card, { transform: [{ translateY }] }]}>
@@ -231,14 +244,6 @@ const styles = StyleSheet.create({
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
   loadingText: { marginTop: 10, color: "#555" },
-
-  // ///--- ADDED ---///
-  searchOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 50,
-    elevation: 50,
-  },
-  // ///--- END ADDED ---///
 
   card: {
     position: "absolute",
