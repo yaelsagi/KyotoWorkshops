@@ -2,12 +2,18 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import RootNavigator from "./navigation/RootNavigator";
+import { AppModeProvider } from "./context/AppModeContext";
+import { UserProvider } from "./context/UserContext";
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <RootNavigator />
-    </NavigationContainer>
+    <UserProvider>
+      <AppModeProvider>
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
+      </AppModeProvider>
+    </UserProvider>
   );
 }
 // // App.js

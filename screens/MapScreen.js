@@ -14,9 +14,10 @@ import MapView from "react-native-maps";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import workshopsData from "../data/workshops.json";
+import { fetchWorkshops, prefetchWorkshopImages } from "../services/workshopService";
 import WorkshopMapMarker from "../components/WorkshopMapMarker";
 import MapSearchBar from "../components/MapSearchBar";
+import FiltersSheet from "../components/FiltersSheet";
 
 const FAV_KEY = "kyoto_favourites";
 
@@ -28,29 +29,41 @@ const KYOTO_REGION = {
 };
 
 export default function MapScreen({ navigation }) {
-  // Workshops are currently local JSON; later this can come from Firestore.
-  const workshops = useMemo(() => workshopsData, []);
+  // Workshop data fetched from Firebase (falls back to local JSON on error)
+  const [workshops, setWorkshops] = useState([]);
+  const [loadingWorkshops, setLoadingWorkshops] = useState(true);
 
-  // Search input state (filters later).
+  // Search bar text (updates live as user types)
   const [searchText, setSearchText] = useState("");
 
-  // Prevent the map's onPress from firing right after a marker press.
-  // Marker press often triggers a map press too.
+  // Used to prevent MapView's onPress from firing right after marker press.
+  // On iOS, marker press can be followed by a map press event.
   const ignoreNextMapPressRef = useRef(false);
 
+  // Selected workshop for bottom card preview.
   const [selected, setSelected] = useState(null);
 
   // In-memory Set for fast lookups; persisted as an array in AsyncStorage.
   const [favourites, setFavourites] = useState(() => new Set());
   const [loadingFavourites, setLoadingFavourites] = useState(true);
 
-  // Bottom card animation: 140 = hidden below screen, 0 = visible.
+  // Bottom card slide animation value: 140 = hidden, 0 = visible.
   const translateY = useRef(new Animated.Value(140)).current;
-
-  // Track whether the card is on-screen.
   const [cardVisible, setCardVisible] = useState(false);
 
-  // Load favourites on mount.
+  const [filtersVisible, setFiltersVisible] = useState(false);
+
+  // These are the ONLY filters that affect the map.
+  // They update ONLY when the user presses Apply.
+  const [appliedFilters, setAppliedFilters] = useState({
+    favouritesOnly: false,
+    topOnly: false,
+  });
+
+  // iOS MapView sometimes fails to redraw when markers are added back.
+  // We bump this key ONLY on Apply to force a reliable redraw.
+  const [mapRefreshKey, setMapRefreshKey] = useState(0);
+  // Load favourites on mount (data persistence requirement).
   useEffect(() => {
     const loadFavourites = async () => {
       try {
@@ -68,13 +81,33 @@ export default function MapScreen({ navigation }) {
     loadFavourites();
   }, []);
 
+  // Fetch workshops from Firebase on mount
+  useEffect(() => {
+    const loadWorkshops = async () => {
+      try {
+        const data = await fetchWorkshops();
+        setWorkshops(data);
+
+        // Non-blocking optimization:
+        // Start warming remote workshop images in background after list data arrives.
+        // We do not await this, so map markers/card rendering stays responsive.
+        Promise.allSettled(data.map((workshop) => prefetchWorkshopImages(workshop))).catch(() => { });
+      } catch (error) {
+        console.log("Failed to load workshops:", error.message);
+        // Service is Firebase-only, so this indicates network/config issues.
+      } finally {
+        setLoadingWorkshops(false);
+      }
+    };
+    loadWorkshops();
+  }, []);
+
   // Persist favourites whenever they change (after initial load).
   useEffect(() => {
     if (loadingFavourites) return;
     AsyncStorage.setItem(FAV_KEY, JSON.stringify(Array.from(favourites))).catch(() => { });
   }, [favourites, loadingFavourites]);
 
-  // Show the bottom preview card.
   const showCard = useCallback(() => {
     setCardVisible(true);
     Animated.timing(translateY, {
@@ -84,7 +117,6 @@ export default function MapScreen({ navigation }) {
     }).start();
   }, [translateY]);
 
-  // Hide the bottom preview card.
   const hideCard = useCallback(() => {
     Animated.timing(translateY, {
       toValue: 140,
@@ -108,7 +140,7 @@ export default function MapScreen({ navigation }) {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (e) {
-      // Ignore if unsupported.
+      // ignore safely
     }
 
     setFavourites((prev) => {
@@ -119,18 +151,43 @@ export default function MapScreen({ navigation }) {
     });
   }, []);
 
-  // Simple search filter (title/category/ward).
+  const handleApplyFilters = useCallback((draft) => {
+    setAppliedFilters(draft);
+
+    // Force MapView redraw once (fixes iOS "markers only reappear after tap")
+    setMapRefreshKey((k) => k + 1);
+
+    setFiltersVisible(false);
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    const cleared = { favouritesOnly: false, topOnly: false };
+    setAppliedFilters(cleared);
+    setMapRefreshKey((k) => k + 1);
+    setFiltersVisible(false);
+  }, []);
+
+  // Visible markers: searchText is live, appliedFilters only changes on Apply.
   const visibleWorkshops = useMemo(() => {
     const q = searchText.trim().toLowerCase();
-    if (!q) return workshops;
 
     return workshops.filter((w) => {
-      const haystack = `${w.title} ${w.category} ${w.ward}`.toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [workshops, searchText]);
+      // Search filter (live)
+      if (q) {
+        const haystack = `${w.title} ${w.category} ${w.ward}`.toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
 
-  if (loadingFavourites) {
+      // Applied filters (Apply button)
+      if (appliedFilters.favouritesOnly && !favourites.has(w.id)) return false;
+      if (appliedFilters.topOnly && !w.isTop) return false;
+
+      return true;
+    });
+  }, [workshops, searchText, appliedFilters, favourites]);
+
+  // Show loading indicator while data loads
+  if (loadingWorkshops || loadingFavourites) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" />
@@ -141,7 +198,28 @@ export default function MapScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Search bar overlay (absolute positioned above map) */}
+      <MapSearchBar
+        value={searchText}
+        onChangeText={setSearchText}
+        onPressFilters={() => {
+          Keyboard.dismiss();
+          setFiltersVisible(true);
+        }}
+      />
+
+      {/* Filters sheet overlay (slides up from bottom) */}
+      <FiltersSheet
+        visible={filtersVisible}
+        onClose={() => setFiltersVisible(false)}
+        initialFilters={appliedFilters}
+        onApply={handleApplyFilters}
+        onClear={handleClearFilters}
+      />
+
       <MapView
+        // Important: key changes only when Apply/Clear is pressed (not on every toggle)
+        key={`map-${mapRefreshKey}`}
         style={StyleSheet.absoluteFillObject}
         initialRegion={KYOTO_REGION}
         onPress={() => {
@@ -161,29 +239,13 @@ export default function MapScreen({ navigation }) {
             workshop={w}
             saved={isFavourited(w.id)}
             onSelect={(workshop) => {
-              // Prevent map onPress from immediately firing after marker press.
               ignoreNextMapPressRef.current = true;
-
               Keyboard.dismiss();
               setSelected(workshop);
             }}
           />
         ))}
       </MapView>
-
-      {/* ///---///
-          ADDED: Render search bar AFTER the MapView so it is visually on top.
-          Also has zIndex/elevation in its own styles.
-          ///---/// */}
-      <MapSearchBar
-        value={searchText}
-        onChangeText={setSearchText}
-        onPressFilters={() => {
-          // eslint-disable-next-line no-alert
-          alert("Filters screen/modal comes next.");
-        }}
-      />
-      {/* ///---/// END ADDED ///---/// */}
 
       {selected && cardVisible && (
         <Animated.View style={[styles.card, { transform: [{ translateY }] }]}>
@@ -226,10 +288,10 @@ export default function MapScreen({ navigation }) {
               accessibilityRole="button"
               accessibilityLabel={isFavourited(selected.id) ? "Remove from favourites" : "Save to favourites"}
               accessibilityHint="Toggles whether this workshop is saved"
-              style={styles.secondaryButton}
+              style={[styles.heartButton, isFavourited(selected.id) && styles.heartButtonActive]}
             >
-              <Text style={styles.secondaryButtonText}>
-                {isFavourited(selected.id) ? "♥ Saved" : "♥ Save"}
+              <Text style={styles.heartIcon}>
+                {isFavourited(selected.id) ? "❤️" : "🤍"}
               </Text>
             </Pressable>
           </View>
@@ -285,4 +347,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   secondaryButtonText: { fontWeight: "700", color: "#C1121F" },
+  heartButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: "#F5F1E8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heartButtonActive: {
+    backgroundColor: "#FFE4E1",
+  },
+  heartIcon: {
+    fontSize: 24,
+  },
 });

@@ -1,15 +1,328 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import React, { useState, useCallback } from "react";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  Pressable,
+  Alert,
+  Platform
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
+import * as Haptics from "expo-haptics";
+import ModeBadge from "../components/ModeBadge";
+import { useAppMode } from "../context/AppModeContext";
+import { fetchWorkshops } from "../services/workshopService";
 
-export default function FavouritesScreen() {
+const FAV_KEY = "kyoto_favourites";
+
+export default function FavouritesScreen({ navigation }) {
+  const { activeMode, modeLabel } = useAppMode();
+  const [favourites, setFavourites] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadFavourites = useCallback(async () => {
+    setLoading(true);
+    try {
+      const stored = await AsyncStorage.getItem(FAV_KEY);
+      if (stored) {
+        const ids = JSON.parse(stored);
+        const workshops = await fetchWorkshops();
+        const favWorkshops = workshops.filter(w => ids.includes(w.id));
+        setFavourites(favWorkshops);
+      } else {
+        setFavourites([]);
+      }
+    } catch (err) {
+      console.log("Error loading favourites:", err);
+      setFavourites([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Reload when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadFavourites();
+    }, [loadFavourites])
+  );
+
+  const handleRemoveFavourite = async (workshopId) => {
+    try {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch (e) {}
+
+    Alert.alert(
+      "Remove from favourites?",
+      "This workshop will be removed from your saved list.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const stored = await AsyncStorage.getItem(FAV_KEY);
+              let ids = stored ? JSON.parse(stored) : [];
+              ids = ids.filter(id => id !== workshopId);
+              await AsyncStorage.setItem(FAV_KEY, JSON.stringify(ids));
+              
+              // Update local state
+              setFavourites(prev => prev.filter(w => w.id !== workshopId));
+            } catch (err) {
+              Alert.alert("Error", "Could not remove from favourites");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderWorkshop = ({ item }) => (
+    <Pressable
+      style={styles.card}
+      onPress={() => navigation.navigate("WorkshopDetails", { workshop: item })}
+    >
+      <View style={styles.cardImagePlaceholder}>
+        <Text style={styles.cardImageText}>📸</Text>
+      </View>
+      
+      <View style={styles.cardContent}>
+        <View style={styles.cardHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text style={styles.cardCategory}>{item.category}</Text>
+          </View>
+          
+          <Pressable 
+            onPress={(e) => {
+              e.stopPropagation();
+              handleRemoveFavourite(item.id);
+            }}
+            style={styles.removeButton}
+          >
+            <Text style={styles.removeButtonText}>♥</Text>
+          </Pressable>
+        </View>
+        
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardLocation}>{item.ward}</Text>
+          <Text style={styles.cardPrice}>¥{item.priceYen.toLocaleString()}</Text>
+        </View>
+        
+        {item.isTop && (
+          <View style={styles.topBadge}>
+            <Text style={styles.topBadgeText}>Top</Text>
+          </View>
+        )}
+      </View>
+    </Pressable>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (favourites.length === 0) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.emptyIcon}>♡</Text>
+        <Text style={styles.emptyTitle}>No favourites yet</Text>
+        <Text style={styles.emptyText}>
+          Save workshops you're interested in by tapping the heart icon
+        </Text>
+        <Pressable 
+          style={styles.exploreButton}
+          onPress={() => navigation.navigate("Explore")}
+        >
+          <Text style={styles.exploreButtonText}>Explore Workshops</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Favourites</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Saved Workshops</Text>
+        <ModeBadge mode={activeMode} label={modeLabel} />
+        <Text style={styles.headerCount}>{favourites.length} saved</Text>
+      </View>
+      
+      <FlatList
+        data={favourites}
+        keyExtractor={item => item.id}
+        renderItem={renderWorkshop}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center" },
-  text: { fontSize: 18, fontWeight: "600" },
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 30,
+    backgroundColor: "#FFFFFF",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#666",
+  },
+  header: {
+    paddingHorizontal: 18,
+    paddingTop: Platform.OS === "ios" ? 60 : 20,
+    paddingBottom: 16,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6E2DA",
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#1F1F1F",
+    marginBottom: 4,
+  },
+  headerCount: {
+    fontSize: 14,
+    color: "#666",
+  },
+  list: {
+    padding: 16,
+  },
+  card: {
+    marginBottom: 16,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E6E2DA",
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  cardImagePlaceholder: {
+    width: "100%",
+    height: 160,
+    backgroundColor: "#F5F1E8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardImageText: {
+    fontSize: 36,
+  },
+  cardContent: {
+    padding: 14,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#1F1F1F",
+    marginBottom: 4,
+  },
+  cardCategory: {
+    fontSize: 13,
+    color: "#666",
+  },
+  removeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFF0F0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 10,
+  },
+  removeButtonText: {
+    fontSize: 18,
+    color: "#C1121F",
+  },
+  cardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  cardLocation: {
+    fontSize: 13,
+    color: "#666",
+  },
+  cardPrice: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F1F1F",
+  },
+  topBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: "#B08A2E",
+    borderRadius: 8,
+  },
+  topBadgeText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+    color: "#DDD",
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1F1F1F",
+    marginBottom: 10,
+  },
+  emptyText: {
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  exploreButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    backgroundColor: "#1F1F1F",
+    borderRadius: 12,
+  },
+  exploreButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
 });

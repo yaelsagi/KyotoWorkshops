@@ -1,32 +1,206 @@
 [
   {
-    "id": "w1",
+    "id": "workshop_kintsugi_basics",
     "title": "Kintsugi Basics",
     "category": "Kintsugi",
     "ward": "東山区",
     "priceYen": 12000,
     "isTop": true,
     "lat": 35.0037,
-    "lng": 135.7788
+    "lng": 135.7788,
+    "wikipediaKeyword": "Kintsugi",
+    "availableSlots": 8,
+    "hostId": "host_takashi_yamamoto",
+    "images": ["image_1.jpg", "image_2.jpg", "image_3.jpg"],
+    "reviews": [
+      {
+        "id": "review_kintsugi_1",
+        "userId": "user_sarah_mitchell",
+        "name": "Sarah M.",
+        "rating": 5,
+        "text": "Amazing experience! The instructor was patient and knowledgeable. I learned so much about the art form.",
+        "createdAt": "2026-02-15T10:30:00Z"
+      },
+      {
+        "id": "review_kintsugi_2",
+        "userId": "user_james_kim",
+        "name": "James K.",
+        "rating": 4,
+        "text": "Great workshop, very hands-on. The materials were high quality and the atmosphere was welcoming.",
+        "createdAt": "2026-02-10T14:20:00Z"
+      },
+      {
+        "id": "review_kintsugi_3",
+        "userId": "user_yuki_tanaka",
+        "name": "Yuki T.",
+        "rating": 5,
+        "text": "Fantastic! As someone who studies traditional arts, this was exactly what I was looking for.",
+        "createdAt": "2026-02-05T16:45:00Z"
+      },
+      {
+        "id": "review_kintsugi_4",
+        "userId": "user_maria_lopez",
+        "name": "Maria L.",
+        "rating": 4,
+        "text": "Lovely time. The workshop could have been a bit longer, but overall very enjoyable.",
+        "createdAt": "2026-01-28T11:15:00Z"
+      }
+    ]
   },
   {
-    "id": "w2",
+    "id": "workshop_nihonga_intro",
     "title": "Nihonga Intro",
     "category": "Nihonga",
     "ward": "左京区",
     "priceYen": 9000,
     "isTop": false,
     "lat": 35.0272,
-    "lng": 135.7809
+    "lng": 135.7809,
+    "wikipediaKeyword": "Nihonga",
+    "availableSlots": 6,
+    "hostId": "host_keiko_suzuki",
+    "images": ["image_1.jpg", "image_2.jpg", "image_3.jpg"],
+    "reviews": [
+      {
+        "id": "review_nihonga_1",
+        "userId": "user_chen_wang",
+        "name": "Chen W.",
+        "rating": 5,
+        "text": "Incredible introduction to traditional Japanese painting. So much packed into the session!",
+        "createdAt": "2026-02-20T09:00:00Z"
+      },
+      {
+        "id": "review_nihonga_2",
+        "userId": "user_emma_robert",
+        "name": "Emma R.",
+        "rating": 4,
+        "text": "Beautiful experience. The colors and techniques are fascinating to learn.",
+        "createdAt": "2026-02-12T13:30:00Z"
+      },
+      {
+        "id": "review_nihonga_3",
+        "userId": "user_alex_davis",
+        "name": "Alex D.",
+        "rating": 5,
+        "text": "The best art workshop I've ever attended. Highly recommended!",
+        "createdAt": "2026-02-08T15:00:00Z"
+      }
+    ]
   },
   {
-    "id": "w3",
+    "id": "workshop_tea_ceremony",
     "title": "Tea Ceremony Experience",
     "category": "Tea Ceremony",
     "ward": "中京区",
     "priceYen": 6000,
     "isTop": true,
     "lat": 35.0116,
-    "lng": 135.7681
+    "lng": 135.7681,
+    "wikipediaKeyword": "Japanese tea ceremony",
+    "availableSlots": 10,
+    "hostId": "host_hiroshi_nakamura",
+    "images": ["image_1.jpg", "image_2.jpg", "image_3.jpg"],
+    "reviews": [
+      {
+        "id": "review_tea_1",
+        "userId": "user_tom_brown",
+        "name": "Tom B.",
+        "rating": 5,
+        "text": "Relaxing and educational. The host explained every step beautifully. A must-do in Kyoto!",
+        "createdAt": "2026-02-22T10:00:00Z"
+      },
+      {
+        "id": "review_tea_2",
+        "userId": "user_lisa_nguyen",
+        "name": "Lisa N.",
+        "rating": 5,
+        "text": "One of the highlights of my trip! Very authentic and peaceful.",
+        "createdAt": "2026-02-18T14:30:00Z"
+      },
+      {
+        "id": "review_tea_3",
+        "userId": "user_raj_patel",
+        "name": "Raj P.",
+        "rating": 4,
+        "text": "Great cultural experience. The matcha was delicious and the atmosphere was serene.",
+        "createdAt": "2026-02-14T11:45:00Z"
+      },
+      {
+        "id": "review_tea_4",
+        "userId": "user_sofia_garcia",
+        "name": "Sofia G.",
+        "rating": 5,
+        "text": "Perfect introduction to Japanese culture. Left feeling very centered and calm.",
+        "createdAt": "2026-02-10T09:30:00Z"
+      },
+      {
+        "id": "review_tea_5",
+        "userId": "user_marco_venti",
+        "name": "Marco V.",
+        "rating": 4,
+        "text": "Authentic experience in a beautiful setting. Highly worth the time.",
+        "createdAt": "2026-02-05T16:00:00Z"
+      }
+    ]
+  },
+  {
+    "id": "workshop_calligraphy_for_all",
+    "title": "Calligraphy for All",
+    "category": "Calligraphy",
+    "ward": "上京区",
+    "priceYen": 7000,
+    "isTop": false,
+    "lat": 35.0231,
+    "lng": 135.7569,
+    "wikipediaKeyword": "Japanese calligraphy",
+    "availableSlots": 7,
+    "hostId": "host_ayaka_fujimoto",
+    "images": ["image_1.jpg", "image_2.jpg", "image_3.jpg"],
+    "reviews": []
+  },
+  {
+    "id": "workshop_flower_arrangement",
+    "title": "Flower Arrangement",
+    "category": "Ikebana",
+    "ward": "右京区",
+    "priceYen": 8500,
+    "isTop": true,
+    "lat": 35.0164,
+    "lng": 135.7073,
+    "wikipediaKeyword": "Ikebana",
+    "availableSlots": 8,
+    "hostId": "host_mina_okada",
+    "images": ["image_1.jpg", "image_2.jpg", "image_3.jpg", "image_4.jpg"],
+    "reviews": []
+  },
+  {
+    "id": "workshop_traditional_pottery_techniques",
+    "title": "Traditional Pottery Techniques",
+    "category": "Pottery",
+    "ward": "山科区",
+    "priceYen": 11000,
+    "isTop": false,
+    "lat": 34.9858,
+    "lng": 135.8142,
+    "wikipediaKeyword": "Japanese pottery",
+    "availableSlots": 5,
+    "hostId": "host_daichi_sato",
+    "images": ["image_1.jpg"],
+    "reviews": []
+  },
+  {
+    "id": "workshop_woodworking_for_beginners",
+    "title": "Woodworking for Beginners",
+    "category": "Woodworking",
+    "ward": "北区",
+    "priceYen": 9500,
+    "isTop": false,
+    "lat": 35.0402,
+    "lng": 135.7468,
+    "wikipediaKeyword": "Japanese woodworking",
+    "availableSlots": 6,
+    "hostId": "host_ryo_kobayashi",
+    "images": ["image_1.jpg", "image_2.jpg", "image_3.jpg"],
+    "reviews": []
   }
 ]
