@@ -14,7 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 jest.mock('firebase/firestore');
 jest.mock('@react-native-async-storage/async-storage');
-jest.mock('../config/firebase', () => ({ database: {} }));
+jest.mock('../firebase/firebase', () => ({ db: {} }));
 
 describe('Booking Validation', () => {
   

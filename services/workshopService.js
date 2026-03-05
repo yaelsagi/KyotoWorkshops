@@ -1,19 +1,23 @@
 // Workshop data service
 // Handles all workshop-related database operations with proper error handling
+//
+// Data Persistence & Offline Support:
+// - Firebase Firestore is the primary data source (cloud-first architecture)
+// - Images use expo-image with disk caching for fast repeat loads
+// - AsyncStorage caches workshop data for offline fallback
+// - If network fails, app uses cached data instead of crashing
+// - Favorites are persisted in AsyncStorage (local device storage)
+//
+// Error Handling:
+// - All network errors are caught and logged
+// - Validation ensures data integrity before display
+// - Graceful degradation: show cached data or empty state if network fails
 
 import { collection, getDocs, doc, getDoc, query, where, addDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image } from 'react-native';
-import * as FileSystem from 'expo-file-system';
-import { database, storage } from '../config/firebase';
-
-// Firebase-only image strategy:
-// 1) Use Firebase download URLs as source of truth.
-// 2) Cache remote files on device for faster repeat views.
-// 3) Keep URL metadata in AsyncStorage to restore cache hints between app sessions.
-const IMAGE_CACHE_PREFIX = 'kyoto_workshop_images_';
-const IMAGE_FILE_CACHE_DIR = `${FileSystem.cacheDirectory}workshop-images/`;
+import { Image } from 'expo-image';
+import { db, storage } from '../firebase/firebase';
 
 // Checks if a workshop object has all required fields
 // Returns an object with {valid: boolean, errors: string[]}
@@ -55,10 +59,12 @@ function validateWorkshopData(workshop) {
 }
 
 // Grabs all workshops from Firebase (single source of truth for production behavior).
+// Falls back to AsyncStorage cache if network error (offline support).
 export async function fetchWorkshops() {
+  const CACHE_KEY = 'kyoto_workshops_cache';
 
   try {
-    const workshopCollection = collection(database, 'workshops');
+    const workshopCollection = collection(db, 'workshops');
     const snapshot = await getDocs(workshopCollection);
     
     // No workshops in database yet
@@ -81,11 +87,33 @@ export async function fetchWorkshops() {
     });
     
     // Filter out any workshops that failed validation
-    return workshops.filter(w => w !== null);
+    const filtered = workshops.filter(w => w !== null);
+    
+    // Cache successful fetch for offline use
+    if (filtered.length > 0) {
+      try {
+        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(filtered));
+      } catch (e) {
+        console.log('Could not cache workshops:', e.message);
+      }
+    }
+    
+    return filtered;
     
   } catch (error) {
-    // Network error or Firebase unavailable
+    // Network error or Firebase unavailable - try cached data
     console.log('Could not fetch from Firebase:', error.message);
+    
+    try {
+      const cached = await AsyncStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const data = JSON.parse(cached);
+        console.log('Using cached workshop data for offline support');
+        return Array.isArray(data) ? data : [];
+      }
+    } catch (e) {
+      console.log('Could not retrieve cached workshops:', e.message);
+    }
     
     return [];
   }
@@ -98,7 +126,7 @@ export async function fetchWorkshopById(workshopId) {
   }
   
   try {
-    const workshopDoc = doc(database, 'workshops', workshopId);
+    const workshopDoc = doc(db, 'workshops', workshopId);
     const snapshot = await getDoc(workshopDoc);
     
     if (!snapshot.exists()) {
@@ -125,7 +153,7 @@ export async function fetchWorkshopById(workshopId) {
 // Search workshops by category, ward, or price range
 export async function searchWorkshops(filters = {}) {
   try {
-    let workshopQuery = collection(database, 'workshops');
+    let workshopQuery = collection(db, 'workshops');
     
     // Add filters if provided
     const constraints = [];
@@ -188,7 +216,7 @@ export async function createWorkshop(workshopData) {
   }
   
   try {
-    const workshopCollection = collection(database, 'workshops');
+    const workshopCollection = collection(db, 'workshops');
     const documentRef = await addDoc(workshopCollection, {
       ...workshopData,
       createdAt: new Date().toISOString(),
@@ -209,7 +237,7 @@ export async function updateWorkshop(workshopId, updates) {
   }
   
   try {
-    const workshopDoc = doc(database, 'workshops', workshopId);
+    const workshopDoc = doc(db, 'workshops', workshopId);
     
     await updateDoc(workshopDoc, {
       ...updates,
@@ -266,139 +294,37 @@ export function getAllWorkshopImages(workshop) {
     .filter(Boolean);
 }
 
-async function cacheWorkshopImageUrls(workshopId, imageUrls) {
-  // We cache only URL lists (not binary image data) to keep storage small and simple.
-  if (!workshopId || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+// Prefetch workshop images to warm up disk cache
+// expo-image with cachePolicy="disk" automatically caches images
+// This function uses Image.prefetch to start loading in the background
+export async function prefetchWorkshopImages(workshop) {
+  if (!workshop?.id || !workshop?.images || !Array.isArray(workshop.images)) {
     return;
   }
 
-  try {
-    const payload = {
-      imageUrls,
-      cachedAt: Date.now(),
-    };
-    await AsyncStorage.setItem(`${IMAGE_CACHE_PREFIX}${workshopId}`, JSON.stringify(payload));
-  } catch (error) {
-    console.log('Could not cache workshop images:', error.message);
+  // Extract remote URLs and prefetch them (no manual file caching needed)
+  const remoteUrls = workshop.images.filter(
+    (url) => typeof url === 'string' && url.startsWith('http')
+  );
+
+  if (remoteUrls.length > 0) {
+    // Start prefetching in background - expo-image will handle disk caching
+    Promise.all(remoteUrls.map((url) => Image.prefetch(url).catch(() => false))).catch(
+      () => {}
+    );
   }
 }
 
-async function getCachedWorkshopImageUrls(workshopId) {
-  // Restores previously known remote URLs so screens can recover faster after relaunch.
-  if (!workshopId) {
-    return [];
-  }
-
-  try {
-    const raw = await AsyncStorage.getItem(`${IMAGE_CACHE_PREFIX}${workshopId}`);
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw);
-    if (!parsed?.imageUrls || !Array.isArray(parsed.imageUrls)) {
-      return [];
-    }
-
-    return parsed.imageUrls;
-  } catch (error) {
-    console.log('Could not read cached workshop images:', error.message);
-    return [];
-  }
-}
-
-function getImageFileExtension(imageUrl) {
-  const cleanUrl = String(imageUrl || '').split('?')[0];
-  const match = cleanUrl.match(/\.(jpg|jpeg|png|webp)$/i);
-  return match ? match[1].toLowerCase() : 'jpg';
-}
-
-function sanitizeWorkshopId(workshopId) {
-  return String(workshopId || 'workshop').replace(/[^a-zA-Z0-9_-]/g, '_');
-}
-
-async function ensureImageCacheDirectory() {
-  try {
-    const directoryInfo = await FileSystem.getInfoAsync(IMAGE_FILE_CACHE_DIR);
-    if (!directoryInfo.exists) {
-      await FileSystem.makeDirectoryAsync(IMAGE_FILE_CACHE_DIR, { intermediates: true });
-    }
-  } catch (error) {
-    console.log('Could not prepare image cache directory:', error.message);
-  }
-}
-
-async function cacheRemoteWorkshopImage(workshopId, imageIndex, imageUrl) {
-  try {
-    await ensureImageCacheDirectory();
-    const safeWorkshopId = sanitizeWorkshopId(workshopId);
-    const extension = getImageFileExtension(imageUrl);
-    const cachedFileUri = `${IMAGE_FILE_CACHE_DIR}${safeWorkshopId}_${imageIndex}.${extension}`;
-
-    const fileInfo = await FileSystem.getInfoAsync(cachedFileUri);
-    if (fileInfo.exists) {
-      return cachedFileUri;
-    }
-
-    const downloadResult = await FileSystem.downloadAsync(imageUrl, cachedFileUri);
-    return downloadResult?.uri || imageUrl;
-  } catch (error) {
-    console.log('Could not cache remote image file:', error.message);
-    return imageUrl;
-  }
-}
-
-// Resolves display-ready image sources and caches remote images on device storage.
-// This is used by the workshop detail/gallery screens for real-app behavior.
+// Simple mapping of workshop images with URL validation
+// No manual file caching  - expo-image handles disk caching with cachePolicy="disk"
 export async function getAllWorkshopImagesForDisplay(workshop) {
   if (!workshop?.images || !Array.isArray(workshop.images) || workshop.images.length === 0) {
     return [];
   }
 
-  const resolvedSources = await Promise.all(
-    workshop.images.map(async (imageValue, index) => {
-      if (typeof imageValue === 'string' && imageValue.startsWith('http')) {
-        const localFileUri = await cacheRemoteWorkshopImage(workshop.id, index, imageValue);
-        return { uri: localFileUri };
-      }
-
-      if (typeof imageValue === 'string' && imageValue.startsWith('file://')) {
-        return { uri: imageValue };
-      }
-
-      return null;
-    })
-  );
-
-  return resolvedSources.filter(Boolean);
-}
-
-export async function prefetchWorkshopImages(workshop) {
-  if (!workshop?.id) {
-    return;
-  }
-
-  // Pull out remote URLs only; these are downloaded and cached on-device.
-  const remoteUrls = Array.isArray(workshop.images)
-    ? workshop.images.filter((url) => typeof url === 'string' && url.startsWith('http'))
-    : [];
-
-  if (remoteUrls.length > 0) {
-    // Warm both memory and file cache for faster repeat workshop views.
-    await Promise.all(remoteUrls.map((url, index) =>
-      cacheRemoteWorkshopImage(workshop.id, index, url)
-    ));
-    await Promise.all(remoteUrls.map((url) => Image.prefetch(url).catch(() => false)));
-    await cacheWorkshopImageUrls(workshop.id, remoteUrls);
-    return;
-  }
-
-  // If the workshop currently has no remote URLs, recover cached URL list as fallback.
-  const cachedUrls = await getCachedWorkshopImageUrls(workshop.id);
-  if (cachedUrls.length > 0) {
-    // Mutating this in-memory object keeps downstream image selection logic unchanged.
-    workshop.images = cachedUrls;
-  }
+  return workshop.images
+    .filter((url) => typeof url === 'string' && (url.startsWith('http') || url.startsWith('file://')))
+    .map((url) => ({ uri: url }));
 }
 
 // Upload one image file to Firebase Storage and attach URL to workshop document
@@ -418,7 +344,7 @@ export async function uploadWorkshopImage(workshopId, imageBlob, fileExtension =
     await uploadBytes(imageRef, imageBlob);
     const downloadUrl = await getDownloadURL(imageRef);
 
-    const workshopDoc = doc(database, 'workshops', workshopId);
+    const workshopDoc = doc(db, 'workshops', workshopId);
     await updateDoc(workshopDoc, {
       images: arrayUnion(downloadUrl),
       updatedAt: new Date().toISOString(),

@@ -10,7 +10,7 @@ import {
 import { getDocs, addDoc } from 'firebase/firestore';
 
 jest.mock('firebase/firestore');
-jest.mock('../config/firebase', () => ({ database: {} }));
+jest.mock('../firebase/firebase', () => ({ db: {} }));
 
 describe('Review Validation', () => {
   

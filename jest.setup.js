@@ -2,7 +2,8 @@
 // Mocks Firebase and AsyncStorage so tests run fast without real database
 
 // Mock Firebase completely
-jest.mock('./config/firebase', () => ({
+jest.mock('./firebase/firebase', () => ({
+  db: {},
   database: {},
   storage: {}
 }));
@@ -35,6 +36,8 @@ jest.mock('firebase/storage', () => ({
   ref: jest.fn(),
   uploadBytes: jest.fn(),
   getDownloadURL: jest.fn(),
+  listAll: jest.fn(),
+  deleteObject: jest.fn(),
 }));
 
 // Mock Expo FileSystem for local image caching logic

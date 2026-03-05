@@ -2,7 +2,7 @@
 // Handles workshop bookings with validation and status tracking
 
 import { collection, getDocs, addDoc, query, where, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { database } from '../config/firebase';
+import { db } from '../firebase/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BOOKINGS_KEY = 'kyoto_bookings';
@@ -55,7 +55,7 @@ export async function fetchUserBookings(userId) {
   }
   
   try {
-    const bookingsCollection = collection(database, 'bookings');
+    const bookingsCollection = collection(db, 'bookings');
     
     // Get this user's bookings, newest first
     const bookingQuery = query(
@@ -110,7 +110,7 @@ export async function fetchWorkshopBookings(workshopId) {
   }
   
   try {
-    const bookingsCollection = collection(database, 'bookings');
+    const bookingsCollection = collection(db, 'bookings');
     
     const bookingQuery = query(
       bookingsCollection,
@@ -146,7 +146,7 @@ export async function createBooking(bookingData) {
   }
   
   try {
-    const bookingsCollection = collection(database, 'bookings');
+    const bookingsCollection = collection(db, 'bookings');
     
     // Add creation timestamp and default status
     const completeBooking = {
@@ -192,7 +192,7 @@ export async function updateBookingStatus(bookingId, newStatus) {
   }
   
   try {
-    const bookingDoc = doc(database, 'bookings', bookingId);
+    const bookingDoc = doc(db, 'bookings', bookingId);
     
     await updateDoc(bookingDoc, {
       status: newStatus,
@@ -235,7 +235,7 @@ export async function deleteBooking(bookingId) {
   }
   
   try {
-    const bookingDoc = doc(database, 'bookings', bookingId);
+    const bookingDoc = doc(db, 'bookings', bookingId);
     await deleteDoc(bookingDoc);
     
     // Remove from local storage

@@ -11,7 +11,7 @@ import { getDocs, getDoc } from 'firebase/firestore';
 
 // Mock Firestore functions
 jest.mock('firebase/firestore');
-jest.mock('../config/firebase', () => ({ database: {} }));
+jest.mock('../firebase/firebase', () => ({ db: {} }));
 
 describe('Workshop Data Validation', () => {
   

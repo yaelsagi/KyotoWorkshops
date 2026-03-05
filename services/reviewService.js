@@ -1,8 +1,21 @@
 // Review service
 // Manages reading and writing workshop reviews with validation
+//
+// Data Persistence:
+// - Reviews are fetched from Firebase Firestore (primary source)
+// - Each workshop's reviews are cached in AsyncStorage per workshopId
+// - Cache key format: 'kyoto_reviews_{workshopId}'
+// - On network error, app shows cached reviews instead of empty
+// - Validation ensures only high-quality reviews are displayed
+//
+// Offline Support:
+// - If user opens a workshop they've viewed before, old reviews load from cache
+// - Cache persists across app sessions
+// - When network returns, fresh data automatically replaces cache
 
 import { collection, getDocs, addDoc, query, where, orderBy, doc, deleteDoc } from 'firebase/firestore';
-import { database } from '../config/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { db } from '../firebase/firebase';
 
 // Makes sure review data is complete before saving
 function validateReview(review) {
@@ -41,14 +54,17 @@ function validateReview(review) {
 }
 
 // Fetch all reviews for a specific workshop
+// Supports offline mode: caches reviews in AsyncStorage, falls back to cache on network error
 export async function fetchReviewsForWorkshop(workshopId) {
   if (!workshopId) {
     throw new Error('Workshop ID is required to fetch reviews');
   }
   
+  const CACHE_KEY = `kyoto_reviews_${workshopId}`;
+
   try {
     // Firebase-only source for production consistency across devices
-    const reviewsCollection = collection(database, 'reviews');
+    const reviewsCollection = collection(db, 'reviews');
     
     // Get reviews for this workshop only, newest first
     const reviewQuery = query(
@@ -70,7 +86,7 @@ export async function fetchReviewsForWorkshop(workshopId) {
     }));
     
     // Filter out any reviews with corrupt data
-    return reviews.filter(review => {
+    const filtered = reviews.filter(review => {
       const validation = validateReview(review);
       if (!validation.valid) {
         console.warn(`Review ${review.id} is invalid:`, validation.errors);
@@ -79,8 +95,32 @@ export async function fetchReviewsForWorkshop(workshopId) {
       return true;
     });
     
+    // Cache successful fetch for offline use
+    if (filtered.length > 0) {
+      try {
+        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(filtered));
+      } catch (e) {
+        console.log('Could not cache reviews:', e.message);
+      }
+    }
+    
+    return filtered;
+    
   } catch (error) {
+    // Network error or Firebase unavailable - try cached data
     console.log('Could not load reviews:', error.message);
+    
+    try {
+      const cached = await AsyncStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const data = JSON.parse(cached);
+        console.log(`Using cached reviews for workshop ${workshopId} (offline mode)`);
+        return Array.isArray(data) ? data : [];
+      }
+    } catch (e) {
+      console.log('Could not retrieve cached reviews:', e.message);
+    }
+    
     // Return empty array instead of crashing the app
     return [];
   }
@@ -89,7 +129,7 @@ export async function fetchReviewsForWorkshop(workshopId) {
 // Get all reviews across workshops (for analytics or admin dashboard)
 export async function fetchAllReviews() {
   try {
-    const reviewsCollection = collection(database, 'reviews');
+    const reviewsCollection = collection(db, 'reviews');
     const reviewQuery = query(reviewsCollection, orderBy('createdAt', 'desc'));
     
     const snapshot = await getDocs(reviewQuery);
@@ -118,7 +158,7 @@ export async function submitReview(reviewData) {
   }
   
   try {
-    const reviewsCollection = collection(database, 'reviews');
+    const reviewsCollection = collection(db, 'reviews');
     
     // Add timestamp when review was created
     const reviewWithTimestamp = {
@@ -146,7 +186,7 @@ export async function deleteReview(reviewId) {
   }
   
   try {
-    const reviewDoc = doc(database, 'reviews', reviewId);
+    const reviewDoc = doc(db, 'reviews', reviewId);
     await deleteDoc(reviewDoc);
     
     return true;

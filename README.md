@@ -10,6 +10,31 @@ A React Native (Expo) mobile app for discovering and booking traditional Kyoto c
 - Remote photos are cached to local device files (`expo-file-system`) for faster repeat views.
 - AsyncStorage is used for app state/persistence (favourites + image cache metadata), not as content source.
 
+## Firebase Architecture
+
+### Cloud Firestore (Database)
+Stores **structured text-based data** in JSON-like documents:
+- Workshop details (title, description, price, location, duration, etc.)
+- Reviews (text, ratings, user IDs, timestamps)
+- Bookings (dates, user IDs, workshop IDs, status)
+- User profiles (name, email, preferences)
+
+Think of Firestore as your **database** with queryable collections and documents.
+
+### Firebase Storage (File Storage)
+Stores **binary files** (images, videos, PDFs):
+- Workshop photos (JPG/PNG files at `/workshop-images/{workshopId}/`)
+- User profile pictures
+- Any large binary content
+
+Think of Storage as your **file system** or cloud drive for media files.
+
+### How They Work Together
+- Firestore documents contain **references** to Storage files (URLs/paths as strings)
+- Example: A workshop document in Firestore has an `images` array with Storage URLs
+- The app queries Firestore for data, then loads images from Storage URLs
+- This separation keeps database queries fast and handles large files efficiently
+
 ## Features
 
 - Multi-screen app with tab + stack navigation
@@ -32,10 +57,29 @@ A React Native (Expo) mobile app for discovering and booking traditional Kyoto c
 ## Project Structure
 
 - `screens/` UI screens
+  - `UploadImagesScreen.js` - (Optional) Upload workshop images to Firebase Storage
 - `components/` reusable UI components
-- `services/` business logic and data access
-- `data/workshops.json` seed source file (used by seeding script)
-- `scripts/seedFirebase.js` uploads seed data and local images to Firebase
+- `services/` business logic and data access helpers
+  - `storageService.js` - (Optional) Firebase Storage upload/delete/list functions
+- `firebase/firebase.js` - Firebase Web SDK initialization (`db`, `storage`)
+- `data/workshops.json` - local sample seed/source data for development content
+
+## Image Management
+
+Workshop images are stored in Firebase Storage and referenced in Firestore workshop documents.
+
+**Images uploaded via Firebase Console** to folder structure:
+```
+workshop-images/
+├── workshop_calligraphy_for_all/
+├── workshop_flower_arrangement/
+├── workshop_kintsugi_basics/
+├── workshop_tea_ceremony/
+├── workshop_pottery_traditional_techniques/
+└── workshop_woodworking_for_beginners/
+```
+
+**Optional:** `UploadImagesScreen.js` and `storageService.js` provide client-side upload functionality for future user-generated content or dynamic image management. Not required for basic workshop display.
 
 ## Setup
 
@@ -45,23 +89,11 @@ A React Native (Expo) mobile app for discovering and booking traditional Kyoto c
 npm install
 ```
 
-2. Configure client Firebase in `config/firebase.js`
+2. Configure client Firebase in `firebase/firebase.js`
 
 Replace placeholder values with your Firebase web config.
 
-3. (Optional but recommended) Seed Firebase with full workshops/reviews/images
-
-Create a Firebase service account JSON and save it as:
-
-`firebase-service-account.json`
-
-Then run:
-
-```bash
-npm run seed:firebase
-```
-
-4. Start the app
+3. Start the app
 
 ```bash
 npm start
@@ -86,16 +118,24 @@ Run coverage:
 npm run test:coverage
 ```
 
-## Seeding Details
+## Firestore Usage Pattern
 
-`npm run seed:firebase` does the following:
+Use client-side Firebase Web SDK calls from services:
 
-1. Reads workshops from `data/workshops.json`
-2. Uploads local workshop images from `assets/images/` to Firebase Storage
-3. Writes workshop docs into Firestore `workshops` collection
-4. Writes review docs into Firestore `reviews` collection
+- Read workshops: `getDocs(collection(db, 'workshops'))`
+- Realtime workshops (optional): `onSnapshot(collection(db, 'workshops'), ...)`
+- Create booking/review: `addDoc(collection(db, 'bookings'), payload)`
+- Update docs: `updateDoc(doc(db, 'bookings', bookingId), updates)`
+- Save favourites (suggested): `setDoc(doc(db, 'users', userId, 'favourites', workshopId), favouriteData)`
 
-After seeding, every device gets workshop data and images from Firebase.
+Keep async loading and error handling in screens/services (`ActivityIndicator`, try/catch, empty-state UI).
+
+## Suggested Data Model
+
+- `workshops`: `{ title, category, ward, lat, lng, priceYen, isTop, imagePathOrUrl }`
+- `users`: `{ displayName, role: 'visitor' | 'host' | 'translator' }`
+- `bookings`: `{ userId, workshopId, date, status }`
+- `users/{userId}/favourites/{workshopId}`: workshop reference + metadata
 
 ## Notes for Submission
 
