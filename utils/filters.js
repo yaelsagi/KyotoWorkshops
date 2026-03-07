@@ -1,40 +1,84 @@
 // utils/filters.js
+import {
+  ALL_OPTION,
+  KYOTO_WARDS,
+} from "../constants/kyotoWards";
+import { WORKSHOP_CATEGORIES } from "../constants/workshopCategories";
+import { normalizeWardName } from "./normalizeWardName";
+
 export const FILTERS_KEY = "kyoto_last_filters";
 
 export const DEFAULT_FILTERS = {
-  query: "",
   onlyFavourites: false,
   onlyTop: false,
-  ward: "Any",
-  category: "Any",
-  minPrice: "",
-  maxPrice: "",
+  ward: ALL_OPTION,
+  selectedCategories: [],
+  minPrice: null,
+  maxPrice: null,
+  translatorAvailable: false,
 };
 
-export function applyFilters({ workshops, favouritesSet, filters }) {
-  const q = (filters.query || "").trim().toLowerCase();
+function normalizePrice(value) {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
 
-  return workshops.filter((w) => {
-    if (filters.onlyFavourites && !favouritesSet.has(w.id)) return false;
-    if (filters.onlyTop && !w.isTop) return false;
+export function normalizePriceRange(minPrice, maxPrice) {
+  const min = normalizePrice(minPrice);
+  const max = normalizePrice(maxPrice);
 
-    if (filters.ward !== "Any" && w.ward !== filters.ward) return false;
-    if (filters.category !== "Any" && w.category !== filters.category) return false;
+  if (min === null && max === null) {
+    return { minPrice: null, maxPrice: null };
+  }
 
-    const price = Number(w.priceYen ?? 0);
+  if (min === null) {
+    return { minPrice: null, maxPrice: max };
+  }
 
-    if (filters.minPrice !== "") {
-      const min = Number(filters.minPrice);
-      if (!Number.isNaN(min) && price < min) return false;
+  if (max === null) {
+    return { minPrice: min, maxPrice: null };
+  }
+
+  if (min > max) {
+    return { minPrice: max, maxPrice: min };
+  }
+
+  return { minPrice: min, maxPrice: max };
+}
+
+export function applyFilters({ workshops, favouritesSet, filters, query = "" }) {
+  const loweredQuery = String(query).trim().toLowerCase();
+  const selectedWard = filters?.ward || ALL_OPTION;
+  const selectedCategories = Array.isArray(filters?.selectedCategories)
+    ? filters.selectedCategories
+    : [];
+
+  const { minPrice, maxPrice } = normalizePriceRange(filters?.minPrice, filters?.maxPrice);
+
+  return workshops.filter((workshop) => {
+    if (filters?.onlyFavourites && !favouritesSet.has(workshop.id)) return false;
+    if (filters?.onlyTop && !workshop.isTop) return false;
+
+    if (selectedWard !== ALL_OPTION) {
+      if (normalizeWardName(workshop.ward) !== selectedWard) return false;
     }
-    if (filters.maxPrice !== "") {
-      const max = Number(filters.maxPrice);
-      if (!Number.isNaN(max) && price > max) return false;
+
+    if (selectedCategories.length > 0) {
+      if (!selectedCategories.includes(workshop.category)) return false;
     }
 
-    if (q) {
-      const hay = `${w.title} ${w.category} ${w.ward}`.toLowerCase();
-      if (!hay.includes(q)) return false;
+    if (filters?.translatorAvailable && workshop.translatorAvailable !== true) {
+      return false;
+    }
+
+    const workshopPrice = Number(workshop.priceYen ?? 0);
+    if (minPrice !== null && workshopPrice < minPrice) return false;
+    if (maxPrice !== null && workshopPrice > maxPrice) return false;
+
+    if (loweredQuery) {
+      const searchText = `${workshop.title} ${workshop.category} ${normalizeWardName(workshop.ward)}`.toLowerCase();
+      if (!searchText.includes(loweredQuery)) return false;
     }
 
     return true;
@@ -42,10 +86,28 @@ export function applyFilters({ workshops, favouritesSet, filters }) {
 }
 
 export function deriveFilterOptions(workshops) {
-  const wards = Array.from(new Set(workshops.map((w) => w.ward))).sort();
-  const categories = Array.from(new Set(workshops.map((w) => w.category))).sort();
+  const workshopCategories = Array.from(
+    new Set(workshops.map((workshop) => workshop.category).filter(Boolean))
+  ).sort();
+
+  const categories = Array.from(
+    new Set([...WORKSHOP_CATEGORIES, ...workshopCategories])
+  );
+
+  const normalizedWards = workshops
+    .map((workshop) => normalizeWardName(workshop.ward))
+    .filter(Boolean);
+
+  const wards = Array.from(new Set([...KYOTO_WARDS, ...normalizedWards]));
+
+  const prices = workshops
+    .map((workshop) => Number(workshop.priceYen))
+    .filter((price) => !Number.isNaN(price));
+
   return {
-    wards: ["Any", ...wards],
-    categories: ["Any", ...categories],
+    wards: [ALL_OPTION, ...wards],
+    categories,
+    minAvailablePrice: prices.length > 0 ? Math.min(...prices) : 0,
+    maxAvailablePrice: prices.length > 0 ? Math.max(...prices) : 20000,
   };
 }

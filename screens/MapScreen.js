@@ -26,6 +26,7 @@ import {
   View,
   Text,
   Pressable,
+  ScrollView,
   Platform,
   Animated,
   ActivityIndicator,
@@ -40,6 +41,8 @@ import { fetchWorkshops, prefetchWorkshopImages } from "../services/workshopServ
 import WorkshopMapMarker from "../components/WorkshopMapMarker";
 import MapSearchBar from "../components/MapSearchBar";
 import FiltersSheet from "../components/FiltersSheet";
+import { ALL_OPTION } from "../constants/kyotoWards";
+import { applyFilters, DEFAULT_FILTERS, deriveFilterOptions, normalizePriceRange } from "../utils/filters";
 
 const FAV_KEY = "kyoto_favourites";
 
@@ -77,10 +80,7 @@ export default function MapScreen({ navigation }) {
 
   // These are the ONLY filters that affect the map.
   // They update ONLY when the user presses Apply.
-  const [appliedFilters, setAppliedFilters] = useState({
-    favouritesOnly: false,
-    topOnly: false,
-  });
+  const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
 
   // iOS MapView sometimes fails to redraw when markers are added back.
   // We bump this key ONLY on Apply to force a reliable redraw.
@@ -173,8 +173,18 @@ export default function MapScreen({ navigation }) {
     });
   }, []);
 
+  const filterOptions = useMemo(() => deriveFilterOptions(workshops), [workshops]);
+
   const handleApplyFilters = useCallback((draft) => {
-    setAppliedFilters(draft);
+    const normalizedRange = normalizePriceRange(draft.minPrice, draft.maxPrice);
+
+    setAppliedFilters({
+      ...DEFAULT_FILTERS,
+      ...draft,
+      ...normalizedRange,
+      ward: draft.ward || ALL_OPTION,
+      selectedCategories: Array.isArray(draft.selectedCategories) ? draft.selectedCategories : [],
+    });
 
     // Force MapView redraw once (fixes iOS "markers only reappear after tap")
     setMapRefreshKey((k) => k + 1);
@@ -183,28 +193,79 @@ export default function MapScreen({ navigation }) {
   }, []);
 
   const handleClearFilters = useCallback(() => {
-    const cleared = { favouritesOnly: false, topOnly: false };
-    setAppliedFilters(cleared);
+    setAppliedFilters(DEFAULT_FILTERS);
     setMapRefreshKey((k) => k + 1);
     setFiltersVisible(false);
   }, []);
 
-  // Visible markers: searchText is live, appliedFilters only changes on Apply.
-  const visibleWorkshops = useMemo(() => {
-    const q = searchText.trim().toLowerCase();
+  const removeAppliedFilter = useCallback((chip) => {
+    setAppliedFilters((prev) => {
+      const next = { ...prev };
 
-    return workshops.filter((w) => {
-      // Search filter (live)
-      if (q) {
-        const haystack = `${w.title} ${w.category} ${w.ward}`.toLowerCase();
-        if (!haystack.includes(q)) return false;
+      if (chip.type === "onlyFavourites") next.onlyFavourites = false;
+      if (chip.type === "onlyTop") next.onlyTop = false;
+      if (chip.type === "translatorAvailable") next.translatorAvailable = false;
+      if (chip.type === "ward") next.ward = ALL_OPTION;
+      if (chip.type === "category") {
+        next.selectedCategories = (next.selectedCategories || []).filter((category) => category !== chip.value);
+      }
+      if (chip.type === "priceRange") {
+        next.minPrice = null;
+        next.maxPrice = null;
       }
 
-      // Applied filters (Apply button)
-      if (appliedFilters.favouritesOnly && !favourites.has(w.id)) return false;
-      if (appliedFilters.topOnly && !w.isTop) return false;
+      return next;
+    });
 
-      return true;
+    setMapRefreshKey((k) => k + 1);
+  }, []);
+
+  const activeFilterChips = useMemo(() => {
+    const chips = [];
+
+    if (appliedFilters.onlyFavourites) {
+      chips.push({ key: "favourites", label: "Favourites", type: "onlyFavourites" });
+    }
+
+    if (appliedFilters.onlyTop) {
+      chips.push({ key: "top", label: "Top workshops", type: "onlyTop" });
+    }
+
+    if (appliedFilters.translatorAvailable) {
+      chips.push({ key: "translator", label: "Translator", type: "translatorAvailable" });
+    }
+
+    if (appliedFilters.ward && appliedFilters.ward !== ALL_OPTION) {
+      chips.push({ key: `ward-${appliedFilters.ward}`, label: appliedFilters.ward, type: "ward" });
+    }
+
+    const categories = Array.isArray(appliedFilters.selectedCategories)
+      ? appliedFilters.selectedCategories
+      : [];
+    categories.forEach((category) => {
+      chips.push({ key: `cat-${category}`, label: category, type: "category", value: category });
+    });
+
+    if (appliedFilters.minPrice !== null || appliedFilters.maxPrice !== null) {
+      const minLabel = appliedFilters.minPrice !== null ? `¥${Number(appliedFilters.minPrice).toLocaleString()}` : "Any";
+      const maxLabel = appliedFilters.maxPrice !== null ? `¥${Number(appliedFilters.maxPrice).toLocaleString()}` : "Any";
+      chips.push({
+        key: "price-range",
+        label: `${minLabel} - ${maxLabel}`,
+        type: "priceRange",
+      });
+    }
+
+    return chips;
+  }, [appliedFilters]);
+
+  // Visible markers: searchText is live, appliedFilters only changes on Apply.
+  const visibleWorkshops = useMemo(() => {
+    return applyFilters({
+      workshops,
+      favouritesSet: favourites,
+      filters: appliedFilters,
+      query: searchText,
     });
   }, [workshops, searchText, appliedFilters, favourites]);
 
@@ -230,6 +291,32 @@ export default function MapScreen({ navigation }) {
         }}
       />
 
+      {activeFilterChips.length > 0 && (
+        <View style={styles.activeFiltersWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.activeFiltersRow}
+            keyboardShouldPersistTaps="handled"
+          >
+            {activeFilterChips.map((chip) => (
+              <View key={chip.key} style={styles.filterChip}>
+                <Text style={styles.filterChipText} numberOfLines={1}>{chip.label}</Text>
+                <Pressable
+                  onPress={() => removeAppliedFilter(chip)}
+                  style={styles.filterChipClose}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${chip.label} filter`}
+                  accessibilityHint="Removes this filter and updates workshop results"
+                >
+                  <Text style={styles.filterChipCloseText}>✕</Text>
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Filters sheet overlay (slides up from bottom) */}
       <FiltersSheet
         visible={filtersVisible}
@@ -237,6 +324,10 @@ export default function MapScreen({ navigation }) {
         initialFilters={appliedFilters}
         onApply={handleApplyFilters}
         onClear={handleClearFilters}
+        wards={filterOptions.wards}
+        categories={filterOptions.categories}
+        minAvailablePrice={filterOptions.minAvailablePrice}
+        maxAvailablePrice={filterOptions.maxAvailablePrice}
       />
 
       <MapView
@@ -330,6 +421,55 @@ const styles = StyleSheet.create({
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
   loadingText: { marginTop: 10, color: "#555" },
+
+  activeFiltersWrap: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    top: Platform.OS === "ios" ? 120 : 78,
+    zIndex: 40,
+    elevation: 40,
+  },
+  activeFiltersRow: {
+    paddingRight: 8,
+    gap: 8,
+  },
+  filterChip: {
+    height: 34,
+    maxWidth: 220,
+    paddingLeft: 12,
+    paddingRight: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E6E2DA",
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+      android: { elevation: 3 },
+    }),
+  },
+  filterChipText: {
+    color: "#1F1F1F",
+    fontSize: 12,
+    fontWeight: "600",
+    marginRight: 6,
+    flexShrink: 1,
+  },
+  filterChipClose: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#F5F1E8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterChipCloseText: {
+    fontSize: 12,
+    color: "#1F1F1F",
+    fontWeight: "700",
+  },
 
   card: {
     position: "absolute",

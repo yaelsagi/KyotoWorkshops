@@ -4,6 +4,7 @@
 import { collection, getDocs, addDoc, query, where, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SUPPORTED_LANGUAGES } from '../constants/supportedLanguages';
 
 const BOOKINGS_KEY = 'kyoto_bookings';
 const BOOKING_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed'];
@@ -31,8 +32,7 @@ function validateBooking(booking) {
       errors.push('Language must be specified when requesting translator');
     }
     
-    const validLanguages = ['English', 'Arabic', 'French', 'Spanish', 'Chinese'];
-    if (!validLanguages.includes(booking.translatorLanguage)) {
+    if (!SUPPORTED_LANGUAGES.includes(booking.translatorLanguage)) {
       errors.push('Invalid translator language');
     }
   }
