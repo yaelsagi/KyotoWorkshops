@@ -6,11 +6,13 @@ import {
   FlatList, 
   Pressable,
   Alert,
-  Platform
+  Platform,
+  ActivityIndicator
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import ModeBadge from "../components/ModeBadge";
 import { useAppMode } from "../context/AppModeContext";
 import { fetchWorkshops } from "../services/workshopService";
@@ -21,6 +23,7 @@ export default function FavouritesScreen({ navigation }) {
   const { activeMode, modeLabel } = useAppMode();
   const [favourites, setFavourites] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [imageLoadingStates, setImageLoadingStates] = useState({});
 
   const loadFavourites = useCallback(async () => {
     setLoading(true);
@@ -82,14 +85,45 @@ export default function FavouritesScreen({ navigation }) {
     );
   };
 
-  const renderWorkshop = ({ item }) => (
-    <Pressable
-      style={styles.card}
-      onPress={() => navigation.navigate("WorkshopDetails", { workshop: item })}
-    >
-      <View style={styles.cardImagePlaceholder}>
-        <Text style={styles.cardImageText}>📸</Text>
-      </View>
+  const renderWorkshop = ({ item }) => {
+    const isImageLoading = imageLoadingStates[item.id] !== false;
+    const firstImageUrl = item.images && item.images.length > 0 ? item.images[0] : null;
+
+    return (
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate("WorkshopDetails", { workshop: item })}
+      >
+        <View style={styles.cardImagePlaceholder}>
+          {isImageLoading && (
+            <ActivityIndicator 
+              size="small" 
+              color="#8B7B6B" 
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          {firstImageUrl ? (
+            <Image 
+              source={{ uri: firstImageUrl }}
+              style={styles.cardImage}
+              contentFit="cover"
+              cachePolicy="disk"
+              onLoadStart={() => setImageLoadingStates(prev => ({ ...prev, [item.id]: true }))}
+              onLoadEnd={() => setImageLoadingStates(prev => ({ ...prev, [item.id]: false }))}
+              onError={() => setImageLoadingStates(prev => ({ ...prev, [item.id]: false }))}
+              accessibilityLabel={`${item.title} workshop image`}
+              accessibilityRole="image"
+            />
+          ) : (
+            <Text style={styles.cardImageText}>📸</Text>
+          )}
+          
+          {item.isTop && (
+            <View style={styles.topBadge}>
+              <Text style={styles.topBadgeText}>Top Workshop</Text>
+            </View>
+          )}
+        </View>
       
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
@@ -115,15 +149,10 @@ export default function FavouritesScreen({ navigation }) {
           <Text style={styles.cardLocation}>{item.ward}</Text>
           <Text style={styles.cardPrice}>¥{item.priceYen.toLocaleString()}</Text>
         </View>
-        
-        {item.isTop && (
-          <View style={styles.topBadge}>
-            <Text style={styles.topBadgeText}>Top</Text>
-          </View>
-        )}
       </View>
     </Pressable>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -233,6 +262,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  cardImage: {
+    width: "100%",
+    height: "100%",
+  },
   cardImageText: {
     fontSize: 36,
   },
@@ -284,17 +317,29 @@ const styles = StyleSheet.create({
   },
   topBadge: {
     position: "absolute",
-    top: 12,
-    right: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: "#B08A2E",
-    borderRadius: 8,
+    top: 10,
+    right: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   topBadgeText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#FFFFFF",
+    color: "#1F1F1F",
+    letterSpacing: 0.3,
   },
   emptyIcon: {
     fontSize: 64,
