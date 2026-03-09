@@ -1,70 +1,70 @@
+// My Workshops screen - shows workshops owned by the host
 import React, { useState, useCallback } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
   Pressable,
-  Alert,
   Platform,
-  ActivityIndicator
+  Alert,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 
-import { fetchUserBookings, cancelBooking } from "../services/bookingService";
-import ModeBadge from "../components/ModeBadge";
-import { useAppMode } from "../context/AppModeContext";
+import { fetchWorkshopsByOwner, deleteWorkshop } from "../services/workshopService";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
+import ModeBadge from "../components/ModeBadge";
+import { useAppMode } from "../context/AppModeContext";
 
-export default function BookingsScreen({ navigation }) {
-  const { activeMode, modeLabel } = useAppMode();
+export default function MyWorkshopsScreen({ navigation }) {
   const { user: authUser } = useAuth();
   const { currentUser } = useUser();
-  const [bookings, setBookings] = useState([]);
+  const { activeMode, modeLabel } = useAppMode();
+  const [workshops, setWorkshops] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const loadBookings = useCallback(async () => {
-    if (!currentUser?.id) {
+  const loadWorkshops = useCallback(async () => {
+    if (!currentUser?.uid) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
-      const data = await fetchUserBookings(currentUser.id);
-      setBookings(data);
+      const data = await fetchWorkshopsByOwner(currentUser.uid);
+      setWorkshops(data);
     } catch (err) {
-      console.log("Error loading bookings:", err);
-      setBookings([]);
+      console.error("Error loading workshops:", err);
+      setWorkshops([]);
     } finally {
       setLoading(false);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.uid]);
 
   useFocusEffect(
     useCallback(() => {
-      loadBookings();
-    }, [loadBookings])
+      loadWorkshops();
+    }, [loadWorkshops])
   );
 
-  const handleCancelBooking = (booking) => {
+  const handleDeleteWorkshop = (workshop) => {
     Alert.alert(
-      "Cancel Booking",
-      `Cancel your booking for "${booking.title}"?`,
+      "Delete Workshop",
+      `Are you sure you want to delete "${workshop.title}"? This cannot be undone.`,
       [
-        { text: "Keep Booking", style: "cancel" },
+        { text: "Cancel", style: "cancel" },
         {
-          text: "Cancel",
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
-              await cancelBooking(booking.id);
-              setBookings(bookings.filter(b => b.id !== booking.id));
-              Alert.alert("Cancelled", "Your booking has been cancelled");
+              await deleteWorkshop(workshop.id);
+              setWorkshops(workshops.filter(w => w.id !== workshop.id));
+              Alert.alert("Deleted", "Workshop has been removed");
             } catch (err) {
-              Alert.alert("Error", err.message || "Could not cancel booking");
+              Alert.alert("Error", err.message || "Could not delete workshop");
             }
           }
         }
@@ -72,72 +72,67 @@ export default function BookingsScreen({ navigation }) {
     );
   };
 
-  const formatDate = (isoString) => {
-    const date = new Date(isoString);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-  };
+  const renderWorkshop = ({ item }) => {
+    const imageUrl = item.images && item.images.length > 0 ? item.images[0] : null;
 
-  const renderBooking = ({ item }) => (
-    <Pressable
-      style={styles.card}
-      onPress={() => navigation.navigate("WorkshopDetails", { workshop: item })}
-    >
-      {item.workshopImage ? (
-        <Image
-          source={{ uri: item.workshopImage }}
-          style={styles.cardImage}
-          contentFit="cover"
-          cachePolicy="disk"
-          accessibilityRole="image"
-          accessibilityLabel={`${item.title} workshop image`}
-        />
-      ) : (
-        <View style={styles.cardImagePlaceholder}>
-          <Text style={styles.cardImageText}>📸</Text>
-        </View>
-      )}
-      
-      <View style={styles.cardContent}>
-        <View style={styles.bookedBadge}>
-          <Text style={styles.bookedBadgeText}>✓ Booked</Text>
-        </View>
-        
-        <Text style={styles.cardTitle} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={styles.cardCategory}>{item.category}</Text>
-        
-        <View style={styles.divider} />
-        
-        <View style={styles.infoRow}>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Location</Text>
-            <Text style={styles.infoValue}>{item.ward}</Text>
+    return (
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate("WorkshopDetails", { workshop: item })}
+      >
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.cardImage}
+            contentFit="cover"
+            cachePolicy="disk"
+            accessibilityRole="image"
+            accessibilityLabel={`${item.title} workshop image`}
+          />
+        ) : (
+          <View style={styles.cardImagePlaceholder}>
+            <Text style={styles.cardImageText}>🏺</Text>
           </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Price</Text>
-            <Text style={styles.infoValue}>¥{item.priceYen.toLocaleString()}</Text>
+        )}
+
+        <View style={styles.cardContent}>
+          <View style={styles.ownedBadge}>
+            <Text style={styles.ownedBadgeText}>Your Workshop</Text>
+          </View>
+
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <Text style={styles.cardCategory}>{item.category}</Text>
+
+          <View style={styles.divider} />
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Location</Text>
+              <Text style={styles.infoValue}>{item.ward}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Price</Text>
+              <Text style={styles.infoValue}>¥{item.priceYen.toLocaleString()}</Text>
+            </View>
+          </View>
+
+          <View style={styles.buttonRow}>
+            <Pressable
+              style={styles.deleteButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleDeleteWorkshop(item);
+              }}
+            >
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </Pressable>
           </View>
         </View>
-        
-        <View style={styles.dateRow}>
-          <Text style={styles.dateLabel}>Booked on:</Text>
-          <Text style={styles.dateValue}>{formatDate(item.bookedAt)}</Text>
-        </View>
-        
-        <Pressable 
-          style={styles.cancelButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            handleCancelBooking(item);
-          }}
-        >
-          <Text style={styles.cancelButtonText}>Cancel Booking</Text>
-        </Pressable>
-      </View>
-    </Pressable>
-  );
+      </Pressable>
+    );
+  };
 
   if (loading) {
     return (
@@ -154,32 +149,26 @@ export default function BookingsScreen({ navigation }) {
         <Text style={styles.emptyIcon}>🔒</Text>
         <Text style={styles.emptyTitle}>Sign in required</Text>
         <Text style={styles.emptyText}>
-          Sign in to view and manage your workshop bookings
+          Sign in to create and manage your workshops
         </Text>
         <Pressable 
-          style={styles.exploreButton}
+          style={styles.authButton}
           onPress={() => navigation.navigate("Login")}
         >
-          <Text style={styles.exploreButtonText}>Sign In</Text>
+          <Text style={styles.authButtonText}>Sign In</Text>
         </Pressable>
       </View>
     );
   }
 
-  if (bookings.length === 0) {
+  if (workshops.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyIcon}>📅</Text>
-        <Text style={styles.emptyTitle}>No bookings yet</Text>
+        <Text style={styles.emptyIcon}>🏺</Text>
+        <Text style={styles.emptyTitle}>No workshops yet</Text>
         <Text style={styles.emptyText}>
-          When you book a workshop, it will appear here
+          Your hosted workshops will appear here
         </Text>
-        <Pressable 
-          style={styles.exploreButton}
-          onPress={() => navigation.navigate("Explore")}
-        >
-          <Text style={styles.exploreButtonText}>Find Workshops</Text>
-        </Pressable>
       </View>
     );
   }
@@ -187,15 +176,17 @@ export default function BookingsScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Bookings</Text>
+        <Text style={styles.headerTitle}>My Workshops</Text>
         <ModeBadge mode={activeMode} label={modeLabel} />
-        <Text style={styles.headerCount}>{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</Text>
+        <Text style={styles.headerCount}>
+          {workshops.length} workshop{workshops.length !== 1 ? 's' : ''}
+        </Text>
       </View>
-      
+
       <FlatList
-        data={bookings}
-        keyExtractor={(item, index) => `${item.id}-${item.bookedAt}-${index}`}
-        renderItem={renderBooking}
+        data={workshops}
+        keyExtractor={(item) => item.id}
+        renderItem={renderWorkshop}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       />
@@ -277,18 +268,18 @@ const styles = StyleSheet.create({
   cardContent: {
     padding: 16,
   },
-  bookedBadge: {
+  ownedBadge: {
     alignSelf: "flex-start",
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: "#E7F5EB",
+    backgroundColor: "#E8F4F8",
     borderRadius: 8,
     marginBottom: 12,
   },
-  bookedBadgeText: {
+  ownedBadgeText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#4A9D5F",
+    color: "#3498db",
   },
   cardTitle: {
     fontSize: 18,
@@ -324,22 +315,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1F1F1F",
   },
-  dateRow: {
+  buttonRow: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
     gap: 8,
   },
-  dateLabel: {
-    fontSize: 13,
-    color: "#666",
-  },
-  dateValue: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1F1F1F",
-  },
-  cancelButton: {
+  deleteButton: {
+    flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
@@ -347,7 +328,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     alignItems: "center",
   },
-  cancelButtonText: {
+  deleteButtonText: {
     fontSize: 14,
     fontWeight: "700",
     color: "#C1121F",
@@ -369,13 +350,13 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 24,
   },
-  exploreButton: {
+  authButton: {
     paddingHorizontal: 24,
     paddingVertical: 14,
     backgroundColor: "#1F1F1F",
     borderRadius: 12,
   },
-  exploreButtonText: {
+  authButtonText: {
     fontSize: 15,
     fontWeight: "700",
     color: "#FFFFFF",

@@ -2,18 +2,24 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import RootNavigator from "./navigation/RootNavigator";
+import { AuthProvider } from "./context/AuthContext";
 import { AppModeProvider } from "./context/AppModeContext";
 import { UserProvider } from "./context/UserContext";
+import { FavouritesProvider } from "./context/FavouritesContext";
 
 export default function App() {
   return (
-    <UserProvider>
-      <AppModeProvider>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
-      </AppModeProvider>
-    </UserProvider>
+    <AuthProvider>
+      <UserProvider>
+        <FavouritesProvider>
+          <AppModeProvider>
+            <NavigationContainer>
+              <RootNavigator />
+            </NavigationContainer>
+          </AppModeProvider>
+        </FavouritesProvider>
+      </UserProvider>
+    </AuthProvider>
   );
 }
 // // App.js

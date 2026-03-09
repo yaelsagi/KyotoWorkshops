@@ -19,7 +19,7 @@
 // - Workshop images queried from Firebase Storage paths
 // - All data loads in parallel for better perceived performance
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   View, 
   Text, 
@@ -32,7 +32,6 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 
 import { fetchReviewsForWorkshop } from "../services/reviewService";
@@ -47,16 +46,17 @@ import ModeBadge from "../components/ModeBadge";
 import ReviewCard from "../components/ReviewCard";
 import PictureCard from "../components/PictureCard";
 import { useAppMode } from "../context/AppModeContext";
+import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
+import { useFavourites } from "../context/FavouritesContext";
 import { fetchWikipediaContent } from "../utils/wikipedia";
-
-const FAV_KEY = "kyoto_favourites";
 
 export default function WorkshopDetailsScreen({ route, navigation }) {
   const workshop = route?.params?.workshop;
   const { activeMode, modeLabel } = useAppMode();
+  const { user: authUser } = useAuth();
   const { currentUser } = useUser();
-  const [isFav, setIsFav] = useState(false);
+  const { isFavourited, toggleFavourite } = useFavourites();
   const [isBooked, setIsBooked] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
@@ -66,21 +66,17 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
   const [loadingImages, setLoadingImages] = useState(false);
   const [loadingCoverImage, setLoadingCoverImage] = useState(true);
 
-  // Load saved/booked status, reviews, and Wikipedia content on mount
+  useEffect(() => {
+    const shouldContinueBooking = route?.params?.continueBookingAfterAuth;
+    if (authUser && shouldContinueBooking) {
+      navigation.setParams({ continueBookingAfterAuth: false });
+      handleBookWorkshop();
+    }
+  }, [authUser, route?.params?.continueBookingAfterAuth]);
+
+  // Load reviews, Wikipedia content, and images on mount
   useEffect(() => {
     if (!workshop) return;
-    
-    const loadStatus = async () => {
-      try {
-        const favs = await AsyncStorage.getItem(FAV_KEY);
-        if (favs) {
-          const arr = JSON.parse(favs);
-          setIsFav(arr.includes(workshop.id));
-        }
-      } catch (err) {
-        console.log("Error loading workshop status:", err);
-      }
-    };
 
     const loadReviews = async () => {
       setLoadingReviews(true);
@@ -118,7 +114,6 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
       }
     };
     
-    loadStatus();
     loadReviews();
     loadWikipedia();
     loadWorkshopImages();
@@ -143,24 +138,21 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
       }
     } catch (e) {}
 
-    try {
-      const stored = await AsyncStorage.getItem(FAV_KEY);
-      let favs = stored ? JSON.parse(stored) : [];
-      
-      if (isFav) {
-        favs = favs.filter(id => id !== workshop.id);
-      } else {
-        favs.push(workshop.id);
-      }
-      
-      await AsyncStorage.setItem(FAV_KEY, JSON.stringify(favs));
-      setIsFav(!isFav);
-    } catch (err) {
-      Alert.alert("Error", "Could not update favourites");
-    }
+    toggleFavourite(workshop.id);
   };
 
   const handleBookWorkshop = async () => {
+    if (!authUser) {
+      navigation.navigate("Login", {
+        redirectTo: "WorkshopDetails",
+        redirectParams: {
+          workshop,
+          continueBookingAfterAuth: true,
+        },
+      });
+      return;
+    }
+    
     if (isBooked) {
       Alert.alert("Already Booked", "You've already booked this workshop");
       return;
@@ -179,7 +171,13 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
           status: "pending",
           translator: translatorRequested ? "Yes" : "No",
           translatorLanguage,
+          title: workshop.title,
+          category: workshop.category,
+          ward: workshop.ward,
           priceYen: workshop.priceYen,
+          workshopImage: Array.isArray(workshop.images) && workshop.images.length > 0 ? workshop.images[0] : null,
+          lat: workshop.lat,
+          lng: workshop.lng,
         };
         
         await createBooking(bookingData);
@@ -271,9 +269,9 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
             onPress={handleToggleFavourite}
             style={styles.favButton}
             accessibilityRole="button"
-            accessibilityLabel={isFav ? "Remove from favorites" : "Add to favorites"}
+            accessibilityLabel={isFavourited(workshop.id) ? "Remove from favorites" : "Add to favorites"}
           >
-            <Text style={styles.favIcon}>{isFav ? "♥" : "♡"}</Text>
+            <Text style={styles.favIcon}>{isFavourited(workshop.id) ? "♥" : "♡"}</Text>
           </Pressable>
         </View>
 

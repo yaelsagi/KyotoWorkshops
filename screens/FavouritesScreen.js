@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   View, 
   Text, 
@@ -9,50 +9,46 @@ import {
   Platform,
   ActivityIndicator
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import ModeBadge from "../components/ModeBadge";
 import { useAppMode } from "../context/AppModeContext";
+import { useFavourites } from "../context/FavouritesContext";
 import { fetchWorkshops } from "../services/workshopService";
-
-const FAV_KEY = "kyoto_favourites";
 
 export default function FavouritesScreen({ navigation }) {
   const { activeMode, modeLabel } = useAppMode();
-  const [favourites, setFavourites] = useState([]);
+  const { favourites: favouriteIds, loadingFavourites, toggleFavourite } = useFavourites();
+  const [favouriteWorkshops, setFavouriteWorkshops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [imageLoadingStates, setImageLoadingStates] = useState({});
 
-  const loadFavourites = useCallback(async () => {
-    setLoading(true);
-    try {
-      const stored = await AsyncStorage.getItem(FAV_KEY);
-      if (stored) {
-        const ids = JSON.parse(stored);
-        const workshops = await fetchWorkshops();
-        const favWorkshops = workshops.filter(w => ids.includes(w.id));
-        setFavourites(favWorkshops);
-      } else {
-        setFavourites([]);
+  // Load workshop details when favourites change
+  useEffect(() => {
+    const loadWorkshopDetails = async () => {
+      setLoading(true);
+      try {
+        if (favouriteIds.length === 0) {
+          setFavouriteWorkshops([]);
+        } else {
+          const workshops = await fetchWorkshops();
+          const favWorkshops = workshops.filter(w => favouriteIds.includes(w.id));
+          setFavouriteWorkshops(favWorkshops);
+        }
+      } catch (err) {
+        console.log("Error loading favourite workshops:", err);
+        setFavouriteWorkshops([]);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.log("Error loading favourites:", err);
-      setFavourites([]);
-    } finally {
-      setLoading(false);
+    };
+
+    if (!loadingFavourites) {
+      loadWorkshopDetails();
     }
-  }, []);
+  }, [favouriteIds, loadingFavourites]);
 
-  // Reload when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      loadFavourites();
-    }, [loadFavourites])
-  );
-
-  const handleRemoveFavourite = async (workshopId) => {
+  const handleRemoveFavourite = (workshopId) => {
     try {
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -67,18 +63,8 @@ export default function FavouritesScreen({ navigation }) {
         {
           text: "Remove",
           style: "destructive",
-          onPress: async () => {
-            try {
-              const stored = await AsyncStorage.getItem(FAV_KEY);
-              let ids = stored ? JSON.parse(stored) : [];
-              ids = ids.filter(id => id !== workshopId);
-              await AsyncStorage.setItem(FAV_KEY, JSON.stringify(ids));
-              
-              // Update local state
-              setFavourites(prev => prev.filter(w => w.id !== workshopId));
-            } catch (err) {
-              Alert.alert("Error", "Could not remove from favourites");
-            }
+          onPress: () => {
+            toggleFavourite(workshopId);
           }
         }
       ]
@@ -162,7 +148,7 @@ export default function FavouritesScreen({ navigation }) {
     );
   }
 
-  if (favourites.length === 0) {
+  if (favouriteWorkshops.length === 0) {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.emptyIcon}>♡</Text>
@@ -185,11 +171,11 @@ export default function FavouritesScreen({ navigation }) {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Saved Workshops</Text>
         <ModeBadge mode={activeMode} label={modeLabel} />
-        <Text style={styles.headerCount}>{favourites.length} saved</Text>
+        <Text style={styles.headerCount}>{favouriteWorkshops.length} saved</Text>
       </View>
       
       <FlatList
-        data={favourites}
+        data={favouriteWorkshops}
         keyExtractor={item => item.id}
         renderItem={renderWorkshop}
         contentContainerStyle={styles.list}

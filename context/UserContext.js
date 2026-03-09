@@ -1,20 +1,77 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
+import { getUserProfile } from "../services/userService";
 
 // Create the user context
 const UserContext = createContext();
 
 // Provider component that wraps the app
 export const UserProvider = ({ children }) => {
-  // In a real app, this would come from Firebase Auth or another authentication service
-  // For now, using a default guest user that persists throughout the session
-  const [currentUser, setCurrentUser] = useState({
-    id: "user_sarah_mitchell",
-    name: "Sarah Mitchell",
-    email: "sarah@example.com",
-    avatar: null,
-  });
+  const { user: authUser } = useAuth();
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Update user profile (called after successful authentication)
+  useEffect(() => {
+    async function loadUserProfile() {
+      if (!authUser) {
+        // Guest mode - no authenticated user yet
+        setCurrentUser(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Load the full user profile from Firestore to get all the details
+        const profile = await getUserProfile(authUser.uid);
+        
+        if (profile) {
+          // Combine Firebase Auth data with Firestore profile data to create a complete user object
+          setCurrentUser({
+            id: authUser.uid,
+            uid: authUser.uid,
+            name: profile.displayName || authUser.displayName,
+            email: authUser.email,
+            displayName: profile.displayName || authUser.displayName,
+            photoURL: profile.photoURL || null,
+            roles: profile.roles || { learner: true, host: false, translator: false },
+            languages: profile.languages || [],
+            createdAt: profile.createdAt,
+          });
+        } else {
+          // Fallback if profile doesn't exist in Firestore (shouldn't happen normally)
+          setCurrentUser({
+            id: authUser.uid,
+            uid: authUser.uid,
+            name: authUser.displayName,
+            email: authUser.email,
+            displayName: authUser.displayName,
+            photoURL: null,
+            roles: { learner: true, host: false, translator: false },
+            languages: [],
+          });
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        // Fallback to auth user data only if there's an error
+        setCurrentUser({
+          id: authUser.uid,
+          uid: authUser.uid,
+          name: authUser.displayName,
+          email: authUser.email,
+          displayName: authUser.displayName,
+          photoURL: null,
+          roles: { learner: true, host: false, translator: false },
+          languages: [],
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadUserProfile();
+  }, [authUser]);
+
+  // Update user profile
   const updateUser = (userData) => {
     setCurrentUser({
       ...currentUser,
@@ -22,18 +79,8 @@ export const UserProvider = ({ children }) => {
     });
   };
 
-  // Logout function (resets to default guest user)
-  const logout = () => {
-    setCurrentUser({
-      id: "user_sarah_mitchell",
-      name: "Sarah Mitchell",
-      email: "sarah@example.com",
-      avatar: null,
-    });
-  };
-
   return (
-    <UserContext.Provider value={{ currentUser, updateUser, logout }}>
+    <UserContext.Provider value={{ currentUser, updateUser, loading }}>
       {children}
     </UserContext.Provider>
   );

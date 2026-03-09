@@ -57,7 +57,8 @@ describe('Workshop Data Validation', () => {
       category: 'Pottery',
       priceYen: 5000,
       lat: 35.0116,
-      lng: 135.7681
+      lng: 135.7681,
+      ward: '中京区'
     };
     
     const result = validateWorkshopData(workshop);
@@ -74,7 +75,8 @@ describe('Workshop Data Validation', () => {
       category: 'Pottery',
       priceYen: -1000,
       lat: 35.0116,
-      lng: 135.7681
+      lng: 135.7681,
+      ward: '中京区'
     };
     
     const result = validateWorkshopData(workshop);
@@ -91,7 +93,8 @@ describe('Workshop Data Validation', () => {
       category: 'Pottery',
       priceYen: 5000,
       lat: 40.0,
-      lng: 140.0
+      lng: 140.0,
+      ward: '中京区'
     };
     
     const result = validateWorkshopData(workshop);
@@ -190,7 +193,8 @@ describe('Fetching Workshops - Async Loading States', () => {
             category: 'Pottery',
             priceYen: 5000,
             lat: 35.0116,
-            lng: 135.7681
+            lng: 135.7681,
+            ward: '中京区'
           })
         },
         {
@@ -267,7 +271,8 @@ describe('Search Workshops', () => {
             category: 'Pottery',
             priceYen: 5000,
             lat: 35.0,
-            lng: 135.7
+            lng: 135.7,
+            ward: '東山区'
           })
         },
         {
@@ -277,7 +282,8 @@ describe('Search Workshops', () => {
             category: 'Painting',
             priceYen: 8000,
             lat: 35.0,
-            lng: 135.7
+            lng: 135.7,
+            ward: '中京区'
           })
         }
       ]

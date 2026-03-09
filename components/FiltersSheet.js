@@ -4,6 +4,7 @@ import { Modal, View, Text, StyleSheet, Pressable, Switch, Platform, ScrollView 
 import { LinearGradient } from "expo-linear-gradient";
 import { ALL_OPTION } from "../constants/kyotoWards";
 import MultiSlider from "@ptomasroos/react-native-multi-slider";
+import { applyFilters } from "../utils/filters";
 
 export default function FiltersSheet({
   visible,
@@ -15,6 +16,9 @@ export default function FiltersSheet({
   categories,
   minAvailablePrice,
   maxAvailablePrice,
+  workshops,
+  favourites,
+  searchText,
 }) {
   const MIN_PRICE_GAP = 1000;
 
@@ -95,6 +99,23 @@ export default function FiltersSheet({
       return { ...prev, selectedCategories: [...selected, category] };
     });
   }, []);
+
+  // Calculate matching workshop count based on draft filters
+  const matchingCount = useMemo(() => {
+    if (!Array.isArray(workshops) || workshops.length === 0) return 0;
+    const favouritesSet = favourites instanceof Set ? favourites : new Set();
+    const filtered = applyFilters({
+      workshops,
+      favouritesSet,
+      filters: draft,
+      query: searchText || "",
+    });
+    return filtered.length;
+  }, [workshops, favourites, draft, searchText]);
+
+  const applyButtonText = matchingCount === 0 
+    ? "No matching workshops" 
+    : `Show ${matchingCount} workshop${matchingCount === 1 ? "" : "s"}`;
 
   return (
     <Modal
@@ -241,7 +262,6 @@ export default function FiltersSheet({
             <View style={styles.block}>
               <Text style={styles.label}>Price range</Text>
               <Text style={styles.help}>¥{currentMin.toLocaleString()} - ¥{safeMax.toLocaleString()}</Text>
-              <Text style={styles.sliderHint}>Minimum gap: ¥{MIN_PRICE_GAP.toLocaleString()}</Text>
 
               <View
                 style={styles.rangeSliderWrap}
@@ -295,10 +315,10 @@ export default function FiltersSheet({
                 onPress={() => onApply(draft)}
                 style={styles.applyBtn}
                 accessibilityRole="button"
-                accessibilityLabel="Apply filters"
+                accessibilityLabel={applyButtonText}
                 accessibilityHint="Applies filters and closes the panel"
               >
-                <Text style={styles.applyText}>Apply</Text>
+                <Text style={styles.applyText}>{applyButtonText}</Text>
               </Pressable>
             </View>
           </View>

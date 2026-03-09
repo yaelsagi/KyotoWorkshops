@@ -34,7 +34,6 @@ import {
 } from "react-native";
 import MapView from "react-native-maps";
 import * as Haptics from "expo-haptics";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 
 import { fetchWorkshops, prefetchWorkshopImages } from "../services/workshopService";
@@ -43,8 +42,7 @@ import MapSearchBar from "../components/MapSearchBar";
 import FiltersSheet from "../components/FiltersSheet";
 import { ALL_OPTION } from "../constants/kyotoWards";
 import { applyFilters, DEFAULT_FILTERS, deriveFilterOptions, normalizePriceRange } from "../utils/filters";
-
-const FAV_KEY = "kyoto_favourites";
+import { useFavourites } from "../context/FavouritesContext";
 
 const KYOTO_REGION = {
   latitude: 35.0116,
@@ -54,6 +52,9 @@ const KYOTO_REGION = {
 };
 
 export default function MapScreen({ navigation }) {
+  // Favourites from shared context (single source of truth)
+  const { favourites, loadingFavourites, isFavourited, toggleFavourite } = useFavourites();
+
   // Workshop data fetched from Firebase (falls back to local JSON on error)
   const [workshops, setWorkshops] = useState([]);
   const [loadingWorkshops, setLoadingWorkshops] = useState(true);
@@ -68,10 +69,6 @@ export default function MapScreen({ navigation }) {
   // Selected workshop for bottom card preview.
   const [selected, setSelected] = useState(null);
 
-  // In-memory Set for fast lookups; persisted as an array in AsyncStorage.
-  const [favourites, setFavourites] = useState(() => new Set());
-  const [loadingFavourites, setLoadingFavourites] = useState(true);
-
   // Bottom card slide animation value: 140 = hidden, 0 = visible.
   const translateY = useRef(new Animated.Value(140)).current;
   const [cardVisible, setCardVisible] = useState(false);
@@ -85,23 +82,6 @@ export default function MapScreen({ navigation }) {
   // iOS MapView sometimes fails to redraw when markers are added back.
   // We bump this key ONLY on Apply to force a reliable redraw.
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
-  // Load favourites on mount (data persistence requirement).
-  useEffect(() => {
-    const loadFavourites = async () => {
-      try {
-        const stored = await AsyncStorage.getItem(FAV_KEY);
-        if (stored) {
-          const arr = JSON.parse(stored);
-          if (Array.isArray(arr)) setFavourites(new Set(arr));
-        }
-      } catch (e) {
-        console.log("Failed to load favourites", e);
-      } finally {
-        setLoadingFavourites(false);
-      }
-    };
-    loadFavourites();
-  }, []);
 
   // Fetch workshops from Firebase on mount
   useEffect(() => {
@@ -123,12 +103,6 @@ export default function MapScreen({ navigation }) {
     };
     loadWorkshops();
   }, []);
-
-  // Persist favourites whenever they change (after initial load).
-  useEffect(() => {
-    if (loadingFavourites) return;
-    AsyncStorage.setItem(FAV_KEY, JSON.stringify(Array.from(favourites))).catch(() => { });
-  }, [favourites, loadingFavourites]);
 
   const showCard = useCallback(() => {
     setCardVisible(true);
@@ -156,22 +130,15 @@ export default function MapScreen({ navigation }) {
     if (selected) showCard();
   }, [selected, showCard]);
 
-  const isFavourited = useCallback((id) => favourites.has(id), [favourites]);
-
-  const toggleFavourite = useCallback(async (workshopId) => {
+  // Wrapper to add haptic feedback when toggling favourites
+  const handleToggleFavourite = useCallback(async (workshopId) => {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (e) {
       // ignore safely
     }
-
-    setFavourites((prev) => {
-      const next = new Set(prev);
-      if (next.has(workshopId)) next.delete(workshopId);
-      else next.add(workshopId);
-      return next;
-    });
-  }, []);
+    toggleFavourite(workshopId);
+  }, [toggleFavourite]);
 
   const filterOptions = useMemo(() => deriveFilterOptions(workshops), [workshops]);
 
@@ -259,15 +226,18 @@ export default function MapScreen({ navigation }) {
     return chips;
   }, [appliedFilters]);
 
+  // Convert context favourites array to Set for filter utility compatibility.
+  const favouritesSet = useMemo(() => new Set(favourites), [favourites]);
+
   // Visible markers: searchText is live, appliedFilters only changes on Apply.
   const visibleWorkshops = useMemo(() => {
     return applyFilters({
       workshops,
-      favouritesSet: favourites,
+      favouritesSet,
       filters: appliedFilters,
       query: searchText,
     });
-  }, [workshops, searchText, appliedFilters, favourites]);
+  }, [workshops, searchText, appliedFilters, favouritesSet]);
 
   // Show loading indicator while data loads
   if (loadingWorkshops || loadingFavourites) {
@@ -328,6 +298,9 @@ export default function MapScreen({ navigation }) {
         categories={filterOptions.categories}
         minAvailablePrice={filterOptions.minAvailablePrice}
         maxAvailablePrice={filterOptions.maxAvailablePrice}
+        workshops={workshops}
+        favourites={favouritesSet}
+        searchText={searchText}
       />
 
       <MapView
@@ -399,7 +372,7 @@ export default function MapScreen({ navigation }) {
             </Pressable>
 
             <Pressable
-              onPress={() => toggleFavourite(selected.id)}
+              onPress={() => handleToggleFavourite(selected.id)}
               accessibilityRole="button"
               accessibilityLabel={isFavourited(selected.id) ? "Remove from favourites" : "Save to favourites"}
               accessibilityHint="Toggles whether this workshop is saved"

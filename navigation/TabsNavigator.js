@@ -8,6 +8,9 @@ import MapScreen from "../screens/MapScreen";
 import FavouritesScreen from "../screens/FavouritesScreen";
 import BookingsScreen from "../screens/BookingsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import MyWorkshopsScreen from "../screens/MyWorkshopsScreen";
+import { useAppMode } from "../context/AppModeContext";
+import { useAuth } from "../context/AuthContext";
 
 const Tab = createBottomTabNavigator();
 const ExploreStack = createNativeStackNavigator();
@@ -25,6 +28,10 @@ function ExploreStackNavigator() {
 }
 
 export default function TabsNavigator() {
+  const { user: authUser } = useAuth();
+  const { approvedRoles } = useAppMode();
+  const isHost = !!authUser && approvedRoles.includes("host");
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -74,6 +81,17 @@ export default function TabsNavigator() {
           ),
         }}
       />
+      {isHost && (
+        <Tab.Screen 
+          name="My Workshops" 
+          component={MyWorkshopsScreen}
+          options={{
+            tabBarIcon: ({ focused, color }) => (
+              <Text style={{ fontSize: 22 }}>{focused ? "🏺" : "🏺"}</Text>
+            ),
+          }}
+        />
+      )}
       <Tab.Screen 
         name="Profile" 
         component={ProfileScreen}

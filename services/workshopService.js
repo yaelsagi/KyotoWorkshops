@@ -13,11 +13,24 @@
 // - Validation ensures data integrity before display
 // - Graceful degradation: show cached data or empty state if network fails
 
-import { collection, getDocs, doc, getDoc, query, where, addDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, where, addDoc, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { db, storage } from '../firebase/firebase';
+import { ALL_OPTION, KYOTO_WARDS } from '../constants/kyotoWards';
+import { normalizeWardName } from '../utils/normalizeWardName';
+
+function normalizeWorkshopLocation(workshop) {
+  if (!workshop || typeof workshop !== 'object') {
+    return workshop;
+  }
+
+  return {
+    ...workshop,
+    ward: normalizeWardName(workshop.ward),
+  };
+}
 
 // Checks if a workshop object has all required fields
 // Returns an object with {valid: boolean, errors: string[]}
@@ -35,6 +48,13 @@ function validateWorkshopData(workshop) {
   
   if (!workshop.category) {
     errors.push('Category is required');
+  }
+
+  const normalizedWard = normalizeWardName(workshop.ward);
+  if (!normalizedWard) {
+    errors.push('Ward is required');
+  } else if (!KYOTO_WARDS.includes(normalizedWard)) {
+    errors.push('Ward must be a valid Kyoto ward');
   }
   
   // Price needs to be a number and make sense (positive value)
@@ -74,7 +94,7 @@ export async function fetchWorkshops() {
     
     // Convert Firebase documents to plain objects
     const workshops = snapshot.docs.map(document => {
-      const data = { id: document.id, ...document.data() };
+      const data = normalizeWorkshopLocation({ id: document.id, ...document.data() });
       
       // Make sure each workshop has valid data before returning it
       const validation = validateWorkshopData(data);
@@ -133,7 +153,7 @@ export async function fetchWorkshopById(workshopId) {
       return null;
     }
     
-    const workshopData = { id: snapshot.id, ...snapshot.data() };
+    const workshopData = normalizeWorkshopLocation({ id: snapshot.id, ...snapshot.data() });
     
     // Validate before returning
     const validation = validateWorkshopData(workshopData);
@@ -162,10 +182,6 @@ export async function searchWorkshops(filters = {}) {
       constraints.push(where('category', '==', filters.category));
     }
     
-    if (filters.ward && filters.ward !== 'Any') {
-      constraints.push(where('ward', '==', filters.ward));
-    }
-    
     if (filters.isTop) {
       constraints.push(where('isTop', '==', true));
     }
@@ -183,15 +199,19 @@ export async function searchWorkshops(filters = {}) {
     
     // Convert and validate results
     const results = snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .map(doc => normalizeWorkshopLocation({ id: doc.id, ...doc.data() }))
       .filter(workshop => {
         const validation = validateWorkshopData(workshop);
         return validation.valid;
       });
+
+    const selectedWard = normalizeWardName(filters.ward);
+    const hasWardFilter = Boolean(selectedWard) && selectedWard !== 'Any' && selectedWard !== ALL_OPTION;
     
     // Client-side price filtering (Firestore doesn't support multiple range queries easily)
-    if (filters.minPrice || filters.maxPrice) {
+    if (filters.minPrice || filters.maxPrice || hasWardFilter) {
       return results.filter(workshop => {
+        if (hasWardFilter && workshop.ward !== selectedWard) return false;
         if (filters.minPrice && workshop.priceYen < filters.minPrice) return false;
         if (filters.maxPrice && workshop.priceYen > filters.maxPrice) return false;
         return true;
@@ -207,9 +227,15 @@ export async function searchWorkshops(filters = {}) {
 }
 
 // Host creates a new workshop
-export async function createWorkshop(workshopData) {
+export async function createWorkshop(workshopData, ownerId) {
+  if (!ownerId) {
+    throw new Error('Owner ID required to create workshop');
+  }
+
+  const normalizedWorkshopData = normalizeWorkshopLocation(workshopData);
+
   // Validate the data before sending to database
-  const validation = validateWorkshopData(workshopData);
+  const validation = validateWorkshopData(normalizedWorkshopData);
   
   if (!validation.valid) {
     throw new Error(`Invalid workshop data: ${validation.errors.join(', ')}`);
@@ -218,11 +244,12 @@ export async function createWorkshop(workshopData) {
   try {
     const workshopCollection = collection(db, 'workshops');
     const documentRef = await addDoc(workshopCollection, {
-      ...workshopData,
+      ...normalizedWorkshopData,
+      ownerId,
       createdAt: new Date().toISOString(),
     });
     
-    return { id: documentRef.id, ...workshopData };
+    return { id: documentRef.id, ...normalizedWorkshopData, ownerId };
     
   } catch (error) {
     console.error('Failed to create workshop:', error);
@@ -239,8 +266,10 @@ export async function updateWorkshop(workshopId, updates) {
   try {
     const workshopDoc = doc(db, 'workshops', workshopId);
     
+    const normalizedUpdates = normalizeWorkshopLocation(updates);
+
     await updateDoc(workshopDoc, {
-      ...updates,
+      ...normalizedUpdates,
       updatedAt: new Date().toISOString(),
     });
     
@@ -249,6 +278,49 @@ export async function updateWorkshop(workshopId, updates) {
   } catch (error) {
     console.error('Update failed:', error);
     throw new Error('Could not update workshop');
+  }
+}
+
+// Delete workshop (only owner can delete)
+export async function deleteWorkshop(workshopId) {
+  if (!workshopId) {
+    throw new Error('Workshop ID required for deletion');
+  }
+  
+  try {
+    const workshopDoc = doc(db, 'workshops', workshopId);
+    await deleteDoc(workshopDoc);
+    return true;
+  } catch (error) {
+    console.error('Delete failed:', error);
+    throw new Error('Could not delete workshop');
+  }
+}
+
+// Fetch workshops by owner ID (for "My Workshops" screen)
+export async function fetchWorkshopsByOwner(ownerId) {
+  if (!ownerId) {
+    return [];
+  }
+  
+  try {
+    const workshopsCollection = collection(db, 'workshops');
+    const q = query(workshopsCollection, where('ownerId', '==', ownerId));
+    const querySnapshot = await getDocs(q);
+    
+    const workshops = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      workshops.push(normalizeWorkshopLocation({
+        id: doc.id,
+        ...data,
+      }));
+    });
+    
+    return workshops;
+  } catch (error) {
+    console.error('Error fetching owner workshops:', error);
+    throw new Error('Could not load your workshops');
   }
 }
 

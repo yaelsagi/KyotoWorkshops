@@ -217,6 +217,120 @@ export async function getWorkshopImageUrl(workshopId, imageName) {
   }
 }
 
+/**
+ * Upload a user's profile photo to Firebase Storage
+ * Stores photos in user-photos/{userId}/profile.jpg
+ * 
+ * @param userId - The user ID from Firebase Auth
+ * @param imageFile - Image file object with uri property from ImagePicker
+ * @returns {Promise<string>} - Download URL of the uploaded profile photo
+ */
+export async function uploadUserProfilePhoto(userId, imageFile) {
+  if (!userId) {
+    throw new Error('User ID is required to upload profile photo');
+  }
+  if (!imageFile || !imageFile.uri) {
+    throw new Error('Valid image file with URI is required');
+  }
+
+  try {
+    // Use a consistent filename so new uploads replace old ones
+    const filename = 'profile.jpg';
+    
+    // Create the storage path for this user's profile photo
+    const storagePath = `user-photos/${userId}/${filename}`;
+    const storageRef = ref(storage, storagePath);
+
+    // Convert the image URI to a blob so we can upload it
+    const response = await fetch(imageFile.uri);
+    const blob = await response.blob();
+    
+    // Upload the image to Firebase Storage
+    const snapshot = await uploadBytes(storageRef, blob);
+    console.log(`Profile photo uploaded to: ${snapshot.fullPath}`);
+
+    // Get the public download URL for the uploaded image
+    const downloadUrl = await getDownloadURL(snapshot.ref);
+    console.log(`Profile photo URL: ${downloadUrl}`);
+
+    return downloadUrl;
+
+  } catch (error) {
+    console.error('Profile photo upload failed:', error);
+    throw new Error(`Could not upload profile photo: ${error.message}`);
+  }
+}
+
+/**
+ * Delete a user's profile photo from Firebase Storage
+ * 
+ * @param userId - The user ID from Firebase Auth
+ */
+export async function deleteUserProfilePhoto(userId) {
+  if (!userId) {
+    throw new Error('User ID is required to delete profile photo');
+  }
+
+  try {
+    const filename = 'profile.jpg';
+    const storagePath = `user-photos/${userId}/${filename}`;
+    const imageRef = ref(storage, storagePath);
+    
+    await deleteObject(imageRef);
+    console.log(`Deleted profile photo for user: ${userId}`);
+    return true;
+
+  } catch (error) {
+    // If the photo doesn't exist, that's okay - just log it
+    if (error.code === 'storage/object-not-found') {
+      console.log('No profile photo to delete');
+      return true;
+    }
+    console.error('Failed to delete profile photo:', error);
+    throw new Error(`Could not delete profile photo: ${error.message}`);
+  }
+}
+
+/**
+ * Delete all files in a user's photo folder from Firebase Storage
+ * Used during account deletion to clean up all user photos
+ * 
+ * @param userId - The user ID from Firebase Auth
+ */
+export async function deleteUserPhotoFolder(userId) {
+  if (!userId) {
+    throw new Error('User ID is required');
+  }
+
+  try {
+    // List all files in the user's photo folder
+    const userPhotoFolder = ref(storage, `user-photos/${userId}`);
+    const result = await listAll(userPhotoFolder);
+    
+    // Delete each file in the folder
+    for (const fileRef of result.items) {
+      try {
+        await deleteObject(fileRef);
+        console.log(`Deleted file: ${fileRef.name}`);
+      } catch (error) {
+        console.warn(`Failed to delete file ${fileRef.name}:`, error);
+      }
+    }
+    
+    console.log(`Deleted all photos for user: ${userId}`);
+    return true;
+
+  } catch (error) {
+    // If folder doesn't exist, that's fine
+    if (error.code === 'storage/object-not-found') {
+      console.log('User photo folder does not exist');
+      return true;
+    }
+    console.error('Failed to delete user photo folder:', error);
+    throw new Error(`Could not delete user photos: ${error.message}`);
+  }
+}
+
 export default {
   uploadWorkshopImage,
   uploadMultipleImagesToWorkshop,
@@ -224,4 +338,7 @@ export default {
   listWorkshopImages,
   deleteWorkshopImage,
   getWorkshopImageUrl,
+  uploadUserProfilePhoto,
+  deleteUserProfilePhoto,
+  deleteUserPhotoFolder,
 };

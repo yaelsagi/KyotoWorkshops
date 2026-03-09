@@ -5,9 +5,44 @@ import { collection, getDocs, addDoc, query, where, orderBy, doc, updateDoc, del
 import { db } from '../firebase/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SUPPORTED_LANGUAGES } from '../constants/supportedLanguages';
+import { fetchWorkshopById, fetchWorkshops } from './workshopService';
+import { normalizeWardName } from '../utils/normalizeWardName';
 
 const BOOKINGS_KEY = 'kyoto_bookings';
 const BOOKING_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed'];
+
+function getPrimaryWorkshopImage(workshop) {
+  if (!workshop?.images || !Array.isArray(workshop.images) || workshop.images.length === 0) {
+    return null;
+  }
+
+  const firstImage = workshop.images[0];
+  if (typeof firstImage === 'string' && (firstImage.startsWith('http') || firstImage.startsWith('file://'))) {
+    return firstImage;
+  }
+
+  return null;
+}
+
+function normalizeBookingForDisplay(booking, workshopLookup = new Map()) {
+  const workshop = workshopLookup.get(booking.workshopId);
+
+  const priceFromBooking = Number(booking.priceYen);
+  const workshopPrice = Number(workshop?.priceYen);
+
+  return {
+    ...booking,
+    title: booking.title || workshop?.title || 'Workshop',
+    category: booking.category || workshop?.category || 'Workshop',
+    ward: normalizeWardName(booking.ward || workshop?.ward || ''),
+    priceYen: Number.isFinite(priceFromBooking)
+      ? priceFromBooking
+      : (Number.isFinite(workshopPrice) ? workshopPrice : 0),
+    workshopImage: booking.workshopImage || getPrimaryWorkshopImage(workshop),
+    lat: typeof booking.lat === 'number' ? booking.lat : workshop?.lat,
+    lng: typeof booking.lng === 'number' ? booking.lng : workshop?.lng,
+  };
+}
 
 // Check if booking data makes sense before saving
 function validateBooking(booking) {
@@ -79,9 +114,25 @@ export async function fetchUserBookings(userId) {
       id: document.id,
       ...document.data()
     }));
+
+    let workshopLookup = new Map();
+    try {
+      const workshops = await fetchWorkshops();
+      workshopLookup = new Map(workshops.map((workshop) => [workshop.id, workshop]));
+    } catch {
+      workshopLookup = new Map();
+    }
+
+    const enrichedBookings = bookings.map((booking) => normalizeBookingForDisplay(booking, workshopLookup));
+
+    try {
+      await AsyncStorage.setItem(BOOKINGS_KEY, JSON.stringify(enrichedBookings));
+    } catch {
+      // Cache write is optional
+    }
     
     // Only return valid bookings
-    return bookings.filter(booking => {
+    return enrichedBookings.filter(booking => {
       const validation = validateBooking(booking);
       if (!validation.valid) {
         console.warn(`Booking ${booking.id} has issues:`, validation.errors);
@@ -138,8 +189,26 @@ export async function fetchWorkshopBookings(workshopId) {
 
 // User books a workshop
 export async function createBooking(bookingData) {
+  let workshop = null;
+  try {
+    workshop = await fetchWorkshopById(bookingData.workshopId);
+  } catch {
+    workshop = null;
+  }
+
+  const completeBookingDraft = {
+    ...bookingData,
+    title: bookingData.title || workshop?.title,
+    category: bookingData.category || workshop?.category,
+    ward: normalizeWardName(bookingData.ward || workshop?.ward || ''),
+    priceYen: typeof bookingData.priceYen === 'number' ? bookingData.priceYen : Number(workshop?.priceYen),
+    workshopImage: bookingData.workshopImage || getPrimaryWorkshopImage(workshop),
+    lat: typeof bookingData.lat === 'number' ? bookingData.lat : workshop?.lat,
+    lng: typeof bookingData.lng === 'number' ? bookingData.lng : workshop?.lng,
+  };
+
   // Make sure all the booking info is valid
-  const validation = validateBooking(bookingData);
+  const validation = validateBooking(completeBookingDraft);
   
   if (!validation.valid) {
     throw new Error(`Invalid booking: ${validation.errors.join(', ')}`);
@@ -150,7 +219,7 @@ export async function createBooking(bookingData) {
     
     // Add creation timestamp and default status
     const completeBooking = {
-      ...bookingData,
+      ...completeBookingDraft,
       status: bookingData.status || 'confirmed',
       bookedAt: new Date().toISOString(),
     };
