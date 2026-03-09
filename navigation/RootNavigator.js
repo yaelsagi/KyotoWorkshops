@@ -8,6 +8,7 @@ import SignUpScreen from "../screens/SignUpScreen";
 import WorkshopDetailsScreen from "../screens/WorkshopDetailsScreen";
 import AllReviewsScreen from "../screens/AllReviewsScreen";
 import AllPicturesScreen from "../screens/AllPicturesScreen";
+import MyWorkshopsScreen from "../screens/MyWorkshopsScreen";
 
 const RootStack = createNativeStackNavigator();
 
@@ -43,6 +44,15 @@ export default function RootNavigator() {
         options={{ 
           title: "Photos",
           headerBackTitleVisible: false 
+        }}
+      />
+
+      <RootStack.Screen
+        name="MyWorkshops"
+        component={MyWorkshopsScreen}
+        options={{
+          title: "My Workshops",
+          headerBackTitleVisible: false,
         }}
       />
 

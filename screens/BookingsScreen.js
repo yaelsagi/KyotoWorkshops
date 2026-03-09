@@ -14,13 +14,10 @@ import { Image } from "expo-image";
 import { CalendarDaysIcon, CameraIcon, LockClosedIcon } from "react-native-heroicons/outline";
 
 import { fetchUserBookings, cancelBooking } from "../services/bookingService";
-import ModeBadge from "../components/ModeBadge";
-import { useAppMode } from "../context/AppModeContext";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
 
 export default function BookingsScreen({ navigation }) {
-  const { activeMode, modeLabel } = useAppMode();
   const { user: authUser } = useAuth();
   const { currentUser } = useUser();
   const [bookings, setBookings] = useState([]);
@@ -189,7 +186,6 @@ export default function BookingsScreen({ navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Bookings</Text>
-        <ModeBadge mode={activeMode} label={modeLabel} />
         <Text style={styles.headerCount}>{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</Text>
       </View>
       

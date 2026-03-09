@@ -126,7 +126,7 @@ KyotoWorkshops/
 │   └── authService.js (planned)
 ├── context/              # React Context providers
 │   ├── UserContext.js    # User state & auth integration
-│   └── AppModeContext.js # App mode state (visitor vs organizer)
+│   └── UserCapabilitiesContext.js # User capabilities state (learner + optional host/translator)
 ├── config/               # Configuration files
 │   └── firebase.js       # Firebase initialization
 ├── data/                 # Static data & seed files
@@ -172,7 +172,7 @@ bookings/
 #### State Management Pattern
 - **Local UI State** - Component useState for forms, modals, animations
 - **App State** - UserContext for authentication and user profile
-- **Mode State** - AppModeContext for app mode switching
+- **Capability State** - UserCapabilitiesContext for learner/host/translator feature access
 - **Persistent State** - AsyncStorage for favorites, cache metadata
 - **Server State** - Firestore for workshops, reviews, bookings
 
@@ -682,10 +682,10 @@ try {
 
 ### Context API State Management
 
-**AppModeContext**
-- Purpose: Toggle between "Tourist" and "Local" app modes
-- Usage: Navigation flows, booking options, content presentation
-- Persistence: Stored in AsyncStorage for user preference
+**UserCapabilitiesContext**
+- Purpose: Manage optional capabilities (host, translator) on top of learner baseline
+- Usage: Enable extra tools in Profile without changing main app navigation
+- Persistence: Stored in AsyncStorage with Firestore role sync
 
 **UserContext**
 - Purpose: Track authenticated user ID, bookings, favorites

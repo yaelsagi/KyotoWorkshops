@@ -3,7 +3,7 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import RootNavigator from "./navigation/RootNavigator";
 import { AuthProvider } from "./context/AuthContext";
-import { AppModeProvider } from "./context/AppModeContext";
+import { UserCapabilitiesProvider } from "./context/UserCapabilitiesContext";
 import { UserProvider } from "./context/UserContext";
 import { FavouritesProvider } from "./context/FavouritesContext";
 
@@ -12,11 +12,11 @@ export default function App() {
     <AuthProvider>
       <UserProvider>
         <FavouritesProvider>
-          <AppModeProvider>
+          <UserCapabilitiesProvider>
             <NavigationContainer>
               <RootNavigator />
             </NavigationContainer>
-          </AppModeProvider>
+          </UserCapabilitiesProvider>
         </FavouritesProvider>
       </UserProvider>
     </AuthProvider>

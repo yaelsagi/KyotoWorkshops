@@ -45,7 +45,7 @@
   - Loads user profile from Firestore after authentication
   - Combines Firebase Auth user with Firestore profile
   - Provides `currentUser` with uid, email, displayName, roles, languages
-- ✅ **AppModeContext Firestore Sync** - Updated [context/AppModeContext.js](context/AppModeContext.js):
+- ✅ **UserCapabilitiesContext Firestore Sync** - Updated [context/UserCapabilitiesContext.js](context/UserCapabilitiesContext.js):
   - Loads approved roles from Firestore user.roles object
   - Syncs role toggles to Firestore via `updateUserRoles()`
   - Maintains AsyncStorage cache for offline mode
@@ -126,8 +126,8 @@ See [SECURITY_RULES.md](SECURITY_RULES.md) for detailed instructions on applying
   - Added legacy fallback for backward compatibility
 - ✅ **Conditional Tab** - Updated [navigation/TabsNavigator.js](navigation/TabsNavigator.js):
   - Host tab only visible when authUser exists AND host role approved
-- ✅ **Guest Role Safety** - Updated [context/AppModeContext.js](context/AppModeContext.js):
-  - Guests always get learner-only mode (prevent cached privileged roles)
+- ✅ **Guest Role Safety** - Updated [context/UserCapabilitiesContext.js](context/UserCapabilitiesContext.js):
+  - Guests always get learner-only capability set (prevent cached privileged roles)
 
 ### What's Working Now
 - App loads to Explore screen without requiring login
@@ -194,7 +194,7 @@ See [SECURITY_RULES.md](SECURITY_RULES.md) for detailed instructions on applying
 ### Current Status
 - ✅ Translator role toggle exists in ProfileScreen
 - ✅ Firestore user profiles support translator role
-- ✅ AppModeContext can switch to translator mode
+- ✅ UserCapabilitiesContext supports translator capability toggles
 
 ### Simple Implementation (Coursework-sized)
 Add translator request fields to bookings without building full marketplace:
@@ -339,7 +339,7 @@ service cloud.firestore {
    - Update `currentUser` to include roles and languages
 
 3. Wire ProfileScreen role toggles to Firestore:
-   - Update `setRoleApproved` in AppModeContext to call `updateUserRoles()`
+  - Update `setCapabilityEnabled` in UserCapabilitiesContext to call `updateUserRoles()`
    - Remove AsyncStorage dependency for roles (migrate to Firestore)
    - Keep role state synced between Firestore and context
 

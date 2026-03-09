@@ -27,8 +27,7 @@ import {
   TrashIcon,
   ExclamationTriangleIcon
 } from 'react-native-heroicons/outline';
-import ModeBadge from "../components/ModeBadge";
-import { MODE_LABELS, useAppMode } from "../context/AppModeContext";
+import { useUserCapabilities } from "../context/UserCapabilitiesContext";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
 import { useFavourites } from "../context/FavouritesContext";
@@ -38,7 +37,7 @@ import { uploadUserProfilePhoto, deleteUserProfilePhoto, deleteUserPhotoFolder }
 import { updateUserPhotoURL } from "../services/userService";
 
 export default function ProfileScreen({ navigation }) {
-  const { activeMode, approvedRoles, setActiveMode, setRoleApproved, modeLabel } = useAppMode();
+  const { enabledRoles, capabilities, setCapabilityEnabled } = useUserCapabilities();
   const { user: authUser } = useAuth();
   const { currentUser, updateUser } = useUser();
   const { favourites, clearFavourites } = useFavourites();
@@ -459,7 +458,9 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.avatarContainer}>
           <View style={styles.avatar}>
             {uploadingPhoto ? (
-              <ActivityIndicator size="large" color="#1F1F1F" />
+              <View style={styles.spinnerContainer}>
+                <ActivityIndicator size="large" color="#1F1F1F" />
+              </View>
             ) : currentUser?.photoURL ? (
               <Image 
                 source={{ uri: currentUser.photoURL }} 
@@ -475,7 +476,7 @@ export default function ProfileScreen({ navigation }) {
             onPress={handleChangePhoto}
             disabled={uploadingPhoto}
           >
-            <CameraIcon size={20} color="#1F1F1F" />
+            <CameraIcon size={16} color="#1F1F1F" />
             <Text style={styles.cameraButtonText}>
               {currentUser?.photoURL ? 'Edit' : 'Add Photo'}
             </Text>
@@ -483,9 +484,6 @@ export default function ProfileScreen({ navigation }) {
         </View>
         <Text style={styles.userName}>{currentUser?.displayName || authUser?.displayName}</Text>
         <Text style={styles.userEmail}>{authUser?.email || 'user@example.com'}</Text>
-        <View style={styles.modeBadgeWrap}>
-          <ModeBadge mode={activeMode} label={modeLabel} />
-        </View>
       </View>
 
       {/* Stats Cards */}
@@ -502,31 +500,7 @@ export default function ProfileScreen({ navigation }) {
 
       {/* Settings Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>App Mode</Text>
-
-        <View style={styles.settingItemColumn}>
-          <Text style={styles.settingLabel}>Current mode</Text>
-          <Text style={styles.settingHelp}>Switch the app view based on your approved roles</Text>
-
-          <View style={styles.modeButtonsWrap}>
-            {approvedRoles.map((role) => {
-              const selected = activeMode === role;
-              return (
-                <Pressable
-                  key={role}
-                  onPress={() => setActiveMode(role)}
-                  style={[styles.modeButton, selected && styles.modeButtonActive]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Switch to ${MODE_LABELS[role]} mode`}
-                >
-                  <Text style={[styles.modeButtonText, selected && styles.modeButtonTextActive]}>
-                    {MODE_LABELS[role]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
+        <Text style={styles.sectionTitle}>Capabilities</Text>
 
         <View style={styles.settingItem}>
           <View style={{ flex: 1 }}>
@@ -534,8 +508,8 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.settingHelp}>Enable to manage and open workshops</Text>
           </View>
           <Switch
-            value={approvedRoles.includes("host")}
-            onValueChange={(value) => setRoleApproved("host", value)}
+            value={enabledRoles.includes("host")}
+            onValueChange={(value) => setCapabilityEnabled("host", value)}
           />
         </View>
 
@@ -545,8 +519,8 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.settingHelp}>Enable to offer translation during bookings</Text>
           </View>
           <Switch
-            value={approvedRoles.includes("translator")}
-            onValueChange={(value) => setRoleApproved("translator", value)}
+            value={enabledRoles.includes("translator")}
+            onValueChange={(value) => setCapabilityEnabled("translator", value)}
           />
         </View>
 
@@ -564,11 +538,59 @@ export default function ProfileScreen({ navigation }) {
         </View>
 
         <Pressable style={styles.menuItem} onPress={handleShare}>
-          <Text style={styles.menuIcon}>📤</Text>
+          <ShareIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
           <Text style={styles.menuText}>Share App</Text>
           <Text style={styles.menuArrow}>›</Text>
         </Pressable>
       </View>
+
+      {capabilities.host && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Host tools</Text>
+
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("MyWorkshops")}
+          >
+            <PencilIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
+            <Text style={styles.menuText}>My Workshops</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => Alert.alert("Create Workshop", "Workshop creation form will be added in a future update.")}
+          >
+            <PencilIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
+            <Text style={styles.menuText}>Create Workshop</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {capabilities.translator && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Translator tools</Text>
+
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => Alert.alert("Translator Profile", "Translator profile settings will be added in a future update.")}
+          >
+            <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
+            <Text style={styles.menuText}>Translator Profile</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => Alert.alert("Translation Requests", "Translation requests will be available in a future update.")}
+          >
+            <QuestionMarkCircleIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
+            <Text style={styles.menuText}>Translation Requests</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* Account Section */}
       <View style={styles.section}>
@@ -665,9 +687,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E6E2DA",
   },
-  modeBadgeWrap: {
-    marginTop: 10,
-  },
   avatarContainer: {
     position: 'relative',
     marginBottom: 14,
@@ -686,24 +705,29 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 45,
   },
+  spinnerContainer: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cameraButton: {
     position: 'absolute',
     bottom: -18,
-    left: '50%',
-    marginLeft: -55,
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
     borderColor: '#1F1F1F',
-    gap: 6,
+    gap: 4,
   },
   cameraButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#1F1F1F',
   },
@@ -762,14 +786,6 @@ const styles = StyleSheet.create({
     borderColor: "#E6E2DA",
     marginBottom: 12,
   },
-  settingItemColumn: {
-    padding: 16,
-    backgroundColor: "#FBFAF7",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E6E2DA",
-    marginBottom: 12,
-  },
   settingLabel: {
     fontSize: 15,
     fontWeight: "600",
@@ -779,32 +795,6 @@ const styles = StyleSheet.create({
   settingHelp: {
     fontSize: 13,
     color: "#666",
-  },
-  modeButtonsWrap: {
-    marginTop: 10,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  modeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#D8D2C4",
-    backgroundColor: "#FFFFFF",
-  },
-  modeButtonActive: {
-    backgroundColor: "#1F1F1F",
-    borderColor: "#1F1F1F",
-  },
-  modeButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#333",
-  },
-  modeButtonTextActive: {
-    color: "#FFFFFF",
   },
   menuItem: {
     flexDirection: "row",

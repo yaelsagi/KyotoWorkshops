@@ -16,13 +16,10 @@ import { CameraIcon, LockClosedIcon, PencilIcon } from "react-native-heroicons/o
 import { fetchWorkshopsByOwner, deleteWorkshop } from "../services/workshopService";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
-import ModeBadge from "../components/ModeBadge";
-import { useAppMode } from "../context/AppModeContext";
 
 export default function MyWorkshopsScreen({ navigation }) {
   const { user: authUser } = useAuth();
   const { currentUser } = useUser();
-  const { activeMode, modeLabel } = useAppMode();
   const [workshops, setWorkshops] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -178,7 +175,6 @@ export default function MyWorkshopsScreen({ navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Workshops</Text>
-        <ModeBadge mode={activeMode} label={modeLabel} />
         <Text style={styles.headerCount}>
           {workshops.length} workshop{workshops.length !== 1 ? 's' : ''}
         </Text>

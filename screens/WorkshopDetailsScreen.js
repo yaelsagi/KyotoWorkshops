@@ -43,10 +43,8 @@ import {
   getAllWorkshopImagesForDisplay,
   prefetchWorkshopImages,
 } from "../services/workshopService";
-import ModeBadge from "../components/ModeBadge";
 import ReviewCard from "../components/ReviewCard";
 import PictureCard from "../components/PictureCard";
-import { useAppMode } from "../context/AppModeContext";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
 import { useFavourites } from "../context/FavouritesContext";
@@ -54,7 +52,6 @@ import { fetchWikipediaContent } from "../utils/wikipedia";
 
 export default function WorkshopDetailsScreen({ route, navigation }) {
   const workshop = route?.params?.workshop;
-  const { activeMode, modeLabel } = useAppMode();
   const { user: authUser } = useAuth();
   const { currentUser } = useUser();
   const { isFavourited, toggleFavourite } = useFavourites();
@@ -261,9 +258,6 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>{workshop.title}</Text>
             <Text style={styles.category}>{workshop.category}</Text>
-            <View style={styles.modeBadgeWrap}>
-              <ModeBadge mode={activeMode} label={modeLabel} />
-            </View>
           </View>
           
           <Pressable 
@@ -496,9 +490,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#666",
     fontWeight: "500",
-  },
-  modeBadgeWrap: {
-    marginTop: 8,
   },
   favButton: {
     width: 44,

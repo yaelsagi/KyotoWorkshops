@@ -12,13 +12,10 @@ import {
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { CameraIcon, HeartIcon } from "react-native-heroicons/outline";
-import ModeBadge from "../components/ModeBadge";
-import { useAppMode } from "../context/AppModeContext";
 import { useFavourites } from "../context/FavouritesContext";
 import { fetchWorkshops } from "../services/workshopService";
 
 export default function FavouritesScreen({ navigation }) {
-  const { activeMode, modeLabel } = useAppMode();
   const { favourites: favouriteIds, loadingFavourites, toggleFavourite } = useFavourites();
   const [favouriteWorkshops, setFavouriteWorkshops] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -171,7 +168,6 @@ export default function FavouritesScreen({ navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Saved Workshops</Text>
-        <ModeBadge mode={activeMode} label={modeLabel} />
         <Text style={styles.headerCount}>{favouriteWorkshops.length} saved</Text>
       </View>
       

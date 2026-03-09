@@ -1,6 +1,7 @@
 // components/FiltersSheet.js
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Modal, View, Text, StyleSheet, Pressable, Switch, Platform, ScrollView } from "react-native";
+import { XMarkIcon } from "react-native-heroicons/outline";
 import { LinearGradient } from "expo-linear-gradient";
 import { ALL_OPTION } from "../constants/kyotoWards";
 import MultiSlider from "@ptomasroos/react-native-multi-slider";
