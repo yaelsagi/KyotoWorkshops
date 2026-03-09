@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
+import { CalendarDaysIcon, CameraIcon, LockClosedIcon } from "react-native-heroicons/outline";
 
 import { fetchUserBookings, cancelBooking } from "../services/bookingService";
 import ModeBadge from "../components/ModeBadge";
@@ -94,7 +95,7 @@ export default function BookingsScreen({ navigation }) {
         />
       ) : (
         <View style={styles.cardImagePlaceholder}>
-          <Text style={styles.cardImageText}>📸</Text>
+          <CameraIcon size={32} color="#8B7B6B" />
         </View>
       )}
       
@@ -151,7 +152,7 @@ export default function BookingsScreen({ navigation }) {
   if (!authUser) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyIcon}>🔒</Text>
+        <LockClosedIcon size={56} color="#DDD" style={styles.emptyIcon} />
         <Text style={styles.emptyTitle}>Sign in required</Text>
         <Text style={styles.emptyText}>
           Sign in to view and manage your workshop bookings
@@ -169,7 +170,7 @@ export default function BookingsScreen({ navigation }) {
   if (bookings.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyIcon}>📅</Text>
+        <CalendarDaysIcon size={56} color="#DDD" style={styles.emptyIcon} />
         <Text style={styles.emptyTitle}>No bookings yet</Text>
         <Text style={styles.emptyText}>
           When you book a workshop, it will appear here

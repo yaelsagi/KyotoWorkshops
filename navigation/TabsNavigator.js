@@ -2,7 +2,14 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Text, Platform } from "react-native";
+import { Platform } from "react-native";
+import {
+  MapIcon,
+  HeartIcon,
+  CalendarDaysIcon,
+  PencilIcon,
+  UserCircleIcon,
+} from "react-native-heroicons/outline";
 
 import MapScreen from "../screens/MapScreen";
 import FavouritesScreen from "../screens/FavouritesScreen";
@@ -58,27 +65,21 @@ export default function TabsNavigator() {
         name="Explore" 
         component={ExploreStackNavigator}
         options={{
-          tabBarIcon: ({ focused, color }) => (
-            <Text style={{ fontSize: 22 }}>{focused ? "🗺️" : "🗺"}</Text>
-          ),
+          tabBarIcon: ({ color }) => <MapIcon size={22} color={color} />,
         }}
       />
       <Tab.Screen 
         name="Favourites" 
         component={FavouritesScreen}
         options={{
-          tabBarIcon: ({ focused, color }) => (
-            <Text style={{ fontSize: 22 }}>{focused ? "♥" : "♡"}</Text>
-          ),
+          tabBarIcon: ({ color }) => <HeartIcon size={22} color={color} />,
         }}
       />
       <Tab.Screen 
         name="Bookings" 
         component={BookingsScreen}
         options={{
-          tabBarIcon: ({ focused, color }) => (
-            <Text style={{ fontSize: 22 }}>{focused ? "📅" : "📆"}</Text>
-          ),
+          tabBarIcon: ({ color }) => <CalendarDaysIcon size={22} color={color} />,
         }}
       />
       {isHost && (
@@ -86,9 +87,7 @@ export default function TabsNavigator() {
           name="My Workshops" 
           component={MyWorkshopsScreen}
           options={{
-            tabBarIcon: ({ focused, color }) => (
-              <Text style={{ fontSize: 22 }}>{focused ? "🏺" : "🏺"}</Text>
-            ),
+            tabBarIcon: ({ color }) => <PencilIcon size={22} color={color} />,
           }}
         />
       )}
@@ -96,9 +95,7 @@ export default function TabsNavigator() {
         name="Profile" 
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ focused, color }) => (
-            <Text style={{ fontSize: 22 }}>{focused ? "👤" : "👤"}</Text>
-          ),
+          tabBarIcon: ({ color }) => <UserCircleIcon size={22} color={color} />,
         }}
       />
     </Tab.Navigator>

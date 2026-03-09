@@ -11,6 +11,7 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
+import { XMarkIcon } from "react-native-heroicons/outline";
 
 function SelectList({ label, value, options, onChange }) {
   const [open, setOpen] = useState(false);
@@ -93,7 +94,7 @@ export default function FiltersModal({
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
-              <Text style={styles.closeText}>✕</Text>
+              <XMarkIcon size={18} color="#333" />
             </Pressable>
           </View>
 
@@ -236,7 +237,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#F5F1E8",
   },
-  closeText: { fontSize: 16, color: "#1F1F1F" },
 
   content: { paddingHorizontal: 14, paddingBottom: 18 },
 

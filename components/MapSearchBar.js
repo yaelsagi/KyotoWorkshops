@@ -1,6 +1,7 @@
 // components/MapSearchBar.js
 import React from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, Platform } from "react-native";
+import { MagnifyingGlassIcon, XMarkIcon } from "react-native-heroicons/outline";
 
 export default function MapSearchBar({
   value,
@@ -11,9 +12,7 @@ export default function MapSearchBar({
   return (
     <View style={styles.container} pointerEvents="box-none">
       <View style={styles.bar}>
-        <Text style={styles.icon} accessibilityElementsHidden>
-          🔍
-        </Text>
+        <MagnifyingGlassIcon size={18} color="#444" style={styles.icon} accessibilityElementsHidden />
 
         <TextInput
           value={value}
@@ -36,7 +35,7 @@ export default function MapSearchBar({
             accessibilityLabel="Clear search"
             accessibilityHint="Clears the search text"
           >
-            <Text style={styles.clearText}>✕</Text>
+            <XMarkIcon size={16} color="#444" />
           </Pressable>
         )}
 
@@ -81,10 +80,9 @@ const styles = StyleSheet.create({
       android: { elevation: 4 },
     }),
   },
-  icon: { marginRight: 8, fontSize: 16 },
+  icon: { marginRight: 8 },
   input: { flex: 1, fontSize: 14, color: "#1F1F1F", paddingVertical: 0 },
   clearButton: { marginLeft: 6, width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
-  clearText: { fontSize: 14, color: "#444" },
   filtersButton: {
     marginLeft: 6,
     paddingHorizontal: 10,

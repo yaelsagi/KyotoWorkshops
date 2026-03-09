@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
+import { CameraIcon, LockClosedIcon, PencilIcon } from "react-native-heroicons/outline";
 
 import { fetchWorkshopsByOwner, deleteWorkshop } from "../services/workshopService";
 import { useAuth } from "../context/AuthContext";
@@ -91,7 +92,7 @@ export default function MyWorkshopsScreen({ navigation }) {
           />
         ) : (
           <View style={styles.cardImagePlaceholder}>
-            <Text style={styles.cardImageText}>🏺</Text>
+            <CameraIcon size={32} color="#8B7B6B" />
           </View>
         )}
 
@@ -146,7 +147,7 @@ export default function MyWorkshopsScreen({ navigation }) {
   if (!authUser) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyIcon}>🔒</Text>
+        <LockClosedIcon size={56} color="#DDD" style={styles.emptyIcon} />
         <Text style={styles.emptyTitle}>Sign in required</Text>
         <Text style={styles.emptyText}>
           Sign in to create and manage your workshops
@@ -164,7 +165,7 @@ export default function MyWorkshopsScreen({ navigation }) {
   if (workshops.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyIcon}>🏺</Text>
+        <PencilIcon size={56} color="#DDD" style={styles.emptyIcon} />
         <Text style={styles.emptyTitle}>No workshops yet</Text>
         <Text style={styles.emptyText}>
           Your hosted workshops will appear here

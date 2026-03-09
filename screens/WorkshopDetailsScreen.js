@@ -33,6 +33,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
+import { CameraIcon, HeartIcon, StarIcon } from "react-native-heroicons/outline";
 
 import { fetchReviewsForWorkshop } from "../services/reviewService";
 import { createBooking } from "../services/bookingService";
@@ -251,7 +252,7 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
               accessibilityRole="image"
             />
           ) : (
-            <Text style={styles.imagePlaceholderText}>📸</Text>
+            <CameraIcon size={48} color="#8B7B6B" />
           )}
         </View>
 
@@ -271,7 +272,7 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
             accessibilityRole="button"
             accessibilityLabel={isFavourited(workshop.id) ? "Remove from favorites" : "Add to favorites"}
           >
-            <Text style={styles.favIcon}>{isFavourited(workshop.id) ? "♥" : "♡"}</Text>
+            <HeartIcon size={22} color={isFavourited(workshop.id) ? "#C1121F" : "#777"} />
           </Pressable>
         </View>
 
@@ -335,9 +336,11 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
                 <Text style={styles.ratingAverage}>
                   {(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)}
                 </Text>
-                <Text style={styles.ratingStars}>
-                  {"⭐".repeat(Math.round(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length))}
-                </Text>
+                <View style={styles.ratingStarsRow}>
+                  {Array.from({ length: Math.round(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length) }).map((_, index) => (
+                    <StarIcon key={`avg-star-${index}`} size={14} color="#B08A2E" />
+                  ))}
+                </View>
                 <Text style={styles.reviewCount}>
                   ({reviews.length} review{reviews.length !== 1 ? "s" : ""})
                 </Text>
@@ -411,7 +414,10 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
 
         {workshop.isTop && (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>⭐ Top Rated Workshop</Text>
+            <View style={styles.badgeRow}>
+              <StarIcon size={14} color="#B08A2E" />
+              <Text style={styles.badgeText}>Top Rated Workshop</Text>
+            </View>
           </View>
         )}
 
@@ -475,9 +481,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  imagePlaceholderText: {
-    fontSize: 48,
-  },
   header: {
     flexDirection: "row",
     padding: 18,
@@ -505,10 +508,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 12,
-  },
-  favIcon: {
-    fontSize: 22,
-    color: "#C1121F",
   },
   section: {
     marginHorizontal: 18,
@@ -579,8 +578,10 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#1F1F1F",
   },
-  ratingStars: {
-    fontSize: 14,
+  ratingStarsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
   },
   reviewCount: {
     fontSize: 13,
@@ -623,6 +624,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#F4E4A3",
     alignItems: "center",
+  },
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   badgeText: {
     fontSize: 14,

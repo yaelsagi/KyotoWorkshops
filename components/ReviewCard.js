@@ -1,15 +1,18 @@
 // components/ReviewCard.js
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { StarIcon } from "react-native-heroicons/outline";
 
 export default function ReviewCard({ name, rating, text }) {
-  const stars = "⭐".repeat(rating) + "☆".repeat(5 - rating);
-
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.name}>{name}</Text>
-        <Text style={styles.rating}>{stars}</Text>
+        <View style={styles.ratingRow}>
+          {Array.from({ length: rating }).map((_, index) => (
+            <StarIcon key={`rating-star-${index}`} size={12} color="#B08A2E" />
+          ))}
+        </View>
       </View>
       <Text style={styles.text} numberOfLines={4}>
         {text}
@@ -40,8 +43,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1F1F1F",
   },
-  rating: {
-    fontSize: 11,
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
   },
   text: {
     fontSize: 13,

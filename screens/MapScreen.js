@@ -35,6 +35,7 @@ import {
 import MapView from "react-native-maps";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
+import { HeartIcon, XMarkIcon } from "react-native-heroicons/outline";
 
 import { fetchWorkshops, prefetchWorkshopImages } from "../services/workshopService";
 import WorkshopMapMarker from "../components/WorkshopMapMarker";
@@ -279,7 +280,7 @@ export default function MapScreen({ navigation }) {
                   accessibilityLabel={`Remove ${chip.label} filter`}
                   accessibilityHint="Removes this filter and updates workshop results"
                 >
-                  <Text style={styles.filterChipCloseText}>✕</Text>
+                  <XMarkIcon size={12} color="#444" />
                 </Pressable>
               </View>
             ))}
@@ -349,7 +350,7 @@ export default function MapScreen({ navigation }) {
               accessibilityHint="Closes the workshop preview card"
               style={styles.closeButton}
             >
-              <Text style={styles.closeButtonText}>✕</Text>
+              <XMarkIcon size={18} color="#1F1F1F" />
             </Pressable>
           </View>
 
@@ -378,9 +379,7 @@ export default function MapScreen({ navigation }) {
               accessibilityHint="Toggles whether this workshop is saved"
               style={[styles.heartButton, isFavourited(selected.id) && styles.heartButtonActive]}
             >
-              <Text style={styles.heartIcon}>
-                {isFavourited(selected.id) ? "❤️" : "🤍"}
-              </Text>
+              <HeartIcon size={20} color={isFavourited(selected.id) ? "#C1121F" : "#777"} />
             </Pressable>
           </View>
         </Animated.View>
@@ -438,11 +437,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  filterChipCloseText: {
-    fontSize: 12,
-    color: "#1F1F1F",
-    fontWeight: "700",
-  },
 
   card: {
     position: "absolute",
@@ -469,7 +463,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#F5F1E8",
   },
-  closeButtonText: { fontSize: 16, color: "#1F1F1F" },
   cardMeta: { marginTop: 6, fontSize: 13, color: "#555" },
   cardPrice: { marginTop: 8, fontSize: 15, fontWeight: "700", color: "#1F1F1F" },
   cardActionsRow: { marginTop: 12, flexDirection: "row", gap: 10 },
@@ -494,8 +487,5 @@ const styles = StyleSheet.create({
   },
   heartButtonActive: {
     backgroundColor: "#FFE4E1",
-  },
-  heartIcon: {
-    fontSize: 24,
   },
 });

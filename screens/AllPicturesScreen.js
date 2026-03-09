@@ -20,6 +20,7 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Platform, FlatList, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
+import { CameraIcon } from "react-native-heroicons/outline";
 
 export default function AllPicturesScreen({ route }) {
   const images = route?.params?.images || [];
@@ -52,7 +53,7 @@ export default function AllPicturesScreen({ route }) {
             accessibilityRole="image"
           />
         ) : (
-          <Text style={styles.emoji}>📸</Text>
+          <CameraIcon size={56} color="#8B7B6B" />
         )}
       </View>
     );
@@ -119,8 +120,5 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
-  },
-  emoji: {
-    fontSize: 56,
   },
 });

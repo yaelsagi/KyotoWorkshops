@@ -14,8 +14,9 @@
 // - Improves perceived performance and signals to user that content is loading
 
 import React, { useState } from "react";
-import { View, StyleSheet, ActivityIndicator, Text } from "react-native";
+import { View, StyleSheet, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
+import { CameraIcon } from "react-native-heroicons/outline";
 
 export default function PictureCard({ source }) {
   const [isLoading, setIsLoading] = useState(true);
@@ -46,7 +47,7 @@ export default function PictureCard({ source }) {
           accessibilityRole="image"
         />
       )}
-      {loadingFailed && <Text style={styles.emoji}>📸</Text>}
+      {loadingFailed && <CameraIcon size={36} color="#8B7B6B" />}
     </View>
   );
 }

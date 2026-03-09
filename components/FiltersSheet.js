@@ -144,7 +144,7 @@ export default function FiltersSheet({
               accessibilityRole="button"
               accessibilityLabel="Close filters"
             >
-              <Text style={styles.closeText}>✕</Text>
+              <XMarkIcon size={18} color="#333" />
             </Pressable>
           </View>
 
@@ -359,7 +359,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#F5F1E8",
   },
-  closeText: { fontSize: 16, color: "#1F1F1F" },
 
   scrollArea: {
     flex: 1,

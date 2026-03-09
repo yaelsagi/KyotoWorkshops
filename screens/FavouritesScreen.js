@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
+import { CameraIcon, HeartIcon } from "react-native-heroicons/outline";
 import ModeBadge from "../components/ModeBadge";
 import { useAppMode } from "../context/AppModeContext";
 import { useFavourites } from "../context/FavouritesContext";
@@ -101,7 +102,7 @@ export default function FavouritesScreen({ navigation }) {
               accessibilityRole="image"
             />
           ) : (
-            <Text style={styles.cardImageText}>📸</Text>
+            <CameraIcon size={36} color="#8B7B6B" />
           )}
           
           {item.isTop && (
@@ -127,7 +128,7 @@ export default function FavouritesScreen({ navigation }) {
             }}
             style={styles.removeButton}
           >
-            <Text style={styles.removeButtonText}>♥</Text>
+            <HeartIcon size={18} color="#C1121F" />
           </Pressable>
         </View>
         
@@ -151,7 +152,7 @@ export default function FavouritesScreen({ navigation }) {
   if (favouriteWorkshops.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyIcon}>♡</Text>
+        <HeartIcon size={56} color="#DDD" style={styles.emptyIcon} />
         <Text style={styles.emptyTitle}>No favourites yet</Text>
         <Text style={styles.emptyText}>
           Save workshops you're interested in by tapping the heart icon
@@ -252,9 +253,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  cardImageText: {
-    fontSize: 36,
-  },
   cardContent: {
     padding: 14,
   },
@@ -281,10 +279,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 10,
-  },
-  removeButtonText: {
-    fontSize: 18,
-    color: "#C1121F",
   },
   cardFooter: {
     flexDirection: "row",
@@ -328,9 +322,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   emptyIcon: {
-    fontSize: 64,
     marginBottom: 16,
-    color: "#DDD",
   },
   emptyTitle: {
     fontSize: 22,

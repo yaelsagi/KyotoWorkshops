@@ -1,6 +1,7 @@
 // screens/AllReviewsScreen.js
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, Platform, FlatList } from "react-native";
+import { View, Text, StyleSheet, Platform, FlatList } from "react-native";
+import { StarIcon } from "react-native-heroicons/outline";
 
 export default function AllReviewsScreen({ route }) {
   const reviews = route?.params?.reviews || [];
@@ -9,7 +10,11 @@ export default function AllReviewsScreen({ route }) {
     <View style={styles.reviewCard}>
       <View style={styles.reviewHeader}>
         <Text style={styles.reviewName}>{item.name}</Text>
-        <Text style={styles.reviewRating}>{"⭐".repeat(item.rating)}{"☆".repeat(5 - item.rating)}</Text>
+        <View style={styles.reviewRatingRow}>
+          {Array.from({ length: item.rating }).map((_, index) => (
+            <StarIcon key={`all-review-star-${item.id}-${index}`} size={12} color="#B08A2E" />
+          ))}
+        </View>
       </View>
       <Text style={styles.reviewText}>{item.text}</Text>
     </View>
@@ -79,8 +84,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1F1F1F",
   },
-  reviewRating: {
-    fontSize: 12,
+  reviewRatingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
   },
   reviewText: {
     fontSize: 14,

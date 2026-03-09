@@ -616,7 +616,7 @@ export default function ProfileScreen({ navigation }) {
           style={styles.menuItem}
           onPress={() => Alert.alert("Help", "For support, please contact support@kyotoworkshops.com")}
         >
-          <Text style={styles.menuIcon}>❓</Text>
+          <QuestionMarkCircleIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
           <Text style={styles.menuText}>Help & FAQ</Text>
           <Text style={styles.menuArrow}>›</Text>
         </Pressable>
@@ -625,13 +625,13 @@ export default function ProfileScreen({ navigation }) {
           style={styles.menuItem}
           onPress={() => Alert.alert("Privacy Policy", "View our privacy policy at kyotoworkshops.com/privacy")}
         >
-          <Text style={styles.menuIcon}>🔐</Text>
+          <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
           <Text style={styles.menuText}>Privacy Policy</Text>
           <Text style={styles.menuArrow}>›</Text>
         </Pressable>
 
         <Pressable style={styles.menuItem} onPress={handleAbout}>
-          <Text style={styles.menuIcon}>ℹ️</Text>
+          <InformationCircleIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
           <Text style={styles.menuText}>About</Text>
           <Text style={styles.menuArrow}>›</Text>
         </Pressable>
