@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import { 
   View, 
   Text, 
@@ -13,7 +13,6 @@ import {
   Image,
   ActivityIndicator
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from 'expo-image-picker';
 import { 
   UserCircleIcon, 
@@ -31,39 +30,17 @@ import { useUserCapabilities } from "../context/UserCapabilitiesContext";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
 import { useFavourites } from "../context/FavouritesContext";
-import { fetchUserBookings } from "../services/bookingService";
 import { signOutUser, deleteUserAccount } from "../services/authService";
 import { uploadUserProfilePhoto, deleteUserProfilePhoto, deleteUserPhotoFolder } from "../services/storageService";
 import { updateUserPhotoURL } from "../services/userService";
 
 export default function ProfileScreen({ navigation }) {
-  const { enabledRoles, capabilities, setCapabilityEnabled } = useUserCapabilities();
+  const { capabilities } = useUserCapabilities();
   const { user: authUser } = useAuth();
   const { currentUser, updateUser } = useUser();
   const { favourites, clearFavourites } = useFavourites();
-  const [bookingsCount, setBookingsCount] = useState(0);
   const [notifications, setNotifications] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-
-  const loadBookingsCount = useCallback(async () => {
-    try {
-      let nextBookingsCount = 0;
-      if (currentUser?.id) {
-        const bookingsData = await fetchUserBookings(currentUser.id);
-        nextBookingsCount = bookingsData ? bookingsData.length : 0;
-      }
-
-      setBookingsCount(nextBookingsCount);
-    } catch (err) {
-      console.log("Error loading stats:", err);
-    }
-  }, [currentUser?.id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadBookingsCount();
-    }, [loadBookingsCount])
-  );
 
   const handleSignOut = () => {
     Alert.alert(
@@ -429,6 +406,15 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.menuArrow}>›</Text>
           </Pressable>
 
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("AdminReview")}
+          >
+            <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
+            <Text style={styles.menuText}>Admin Review (Demo)</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </Pressable>
+
           <Pressable 
             style={styles.menuItem}
             onPress={() => Alert.alert("Privacy Policy", "View our privacy policy at kyotoworkshops.com/privacy")}
@@ -486,44 +472,48 @@ export default function ProfileScreen({ navigation }) {
         <Text style={styles.userEmail}>{authUser?.email || 'user@example.com'}</Text>
       </View>
 
-      {/* Stats Cards */}
+      {/* Action Cards */}
       <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{bookingsCount}</Text>
-          <Text style={styles.statLabel}>Bookings</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{favourites.length}</Text>
-          <Text style={styles.statLabel}>Saved</Text>
-        </View>
+        <Pressable 
+          style={styles.statCard}
+          onPress={() => {
+            if (capabilities.translator) {
+              Alert.alert("Translator Dashboard", "Translation requests and profile settings will be available in a future update.");
+            } else {
+              navigation.navigate("TranslatorSetup");
+            }
+          }}
+        >
+          <Text style={styles.statValue}>🌐</Text>
+          <Text style={styles.statLabel}>
+            {capabilities.translator ? "Translator Dashboard" : "Become a Translator"}
+          </Text>
+        </Pressable>
+        <Pressable 
+          style={styles.statCard}
+          onPress={() => {
+            if (capabilities.host) {
+              navigation.navigate("MyWorkshops");
+            } else if (currentUser?.hostApplicationStatus === "pending") {
+              navigation.navigate("HostSetup");
+            } else {
+              navigation.navigate("HostSetup");
+            }
+          }}
+        >
+          <Text style={styles.statValue}>🎨</Text>
+          <Text style={styles.statLabel}>
+            {capabilities.host
+              ? "My Workshops"
+              : currentUser?.hostApplicationStatus === "pending"
+                ? "Host Application Pending"
+                : "Host a Workshop"}
+          </Text>
+        </Pressable>
       </View>
 
       {/* Settings Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Capabilities</Text>
-
-        <View style={styles.settingItem}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.settingLabel}>Host access</Text>
-            <Text style={styles.settingHelp}>Enable to manage and open workshops</Text>
-          </View>
-          <Switch
-            value={enabledRoles.includes("host")}
-            onValueChange={(value) => setCapabilityEnabled("host", value)}
-          />
-        </View>
-
-        <View style={styles.settingItem}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.settingLabel}>Translator access</Text>
-            <Text style={styles.settingHelp}>Enable to offer translation during bookings</Text>
-          </View>
-          <Switch
-            value={enabledRoles.includes("translator")}
-            onValueChange={(value) => setCapabilityEnabled("translator", value)}
-          />
-        </View>
-
         <Text style={styles.sectionTitle}>Settings</Text>
         
         <View style={styles.settingItem}>
@@ -543,54 +533,6 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.menuArrow}>›</Text>
         </Pressable>
       </View>
-
-      {capabilities.host && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Host tools</Text>
-
-          <Pressable
-            style={styles.menuItem}
-            onPress={() => navigation.navigate("MyWorkshops")}
-          >
-            <PencilIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-            <Text style={styles.menuText}>My Workshops</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.menuItem}
-            onPress={() => Alert.alert("Create Workshop", "Workshop creation form will be added in a future update.")}
-          >
-            <PencilIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Create Workshop</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {capabilities.translator && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Translator tools</Text>
-
-          <Pressable
-            style={styles.menuItem}
-            onPress={() => Alert.alert("Translator Profile", "Translator profile settings will be added in a future update.")}
-          >
-            <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Translator Profile</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.menuItem}
-            onPress={() => Alert.alert("Translation Requests", "Translation requests will be available in a future update.")}
-          >
-            <QuestionMarkCircleIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Translation Requests</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </Pressable>
-        </View>
-      )}
 
       {/* Account Section */}
       <View style={styles.section}>
@@ -640,6 +582,15 @@ export default function ProfileScreen({ navigation }) {
         >
           <QuestionMarkCircleIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
           <Text style={styles.menuText}>Help & FAQ</Text>
+          <Text style={styles.menuArrow}>›</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.menuItem}
+          onPress={() => navigation.navigate("AdminReview")}
+        >
+          <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
+          <Text style={styles.menuText}>Admin Review (Demo)</Text>
           <Text style={styles.menuArrow}>›</Text>
         </Pressable>
 
@@ -774,6 +725,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1F1F1F",
     marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  subSectionTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1F1F1F",
+    marginTop: 6,
+    marginBottom: 8,
     paddingHorizontal: 2,
   },
   settingItem: {

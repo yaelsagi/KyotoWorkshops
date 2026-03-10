@@ -1,4 +1,3 @@
-// My Workshops screen - shows workshops owned by the host
 import React, { useState, useCallback } from "react";
 import {
   View,
@@ -11,11 +10,21 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
-import { CameraIcon, LockClosedIcon, PencilIcon } from "react-native-heroicons/outline";
+import { CameraIcon, LockClosedIcon, PencilIcon, PlusIcon } from "react-native-heroicons/outline";
 
 import { fetchWorkshopsByOwner, deleteWorkshop } from "../services/workshopService";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
+
+function getStatusMeta(status) {
+  if (status === "approved") {
+    return { label: "Approved", color: "#0D7A3E", bg: "#E8F7EE" };
+  }
+  if (status === "rejected") {
+    return { label: "Rejected", color: "#C1121F", bg: "#FFECEE" };
+  }
+  return { label: "Pending Review", color: "#8A6D1D", bg: "#FFF6DF" };
+}
 
 export default function MyWorkshopsScreen({ navigation }) {
   const { user: authUser } = useAuth();
@@ -59,19 +68,20 @@ export default function MyWorkshopsScreen({ navigation }) {
           onPress: async () => {
             try {
               await deleteWorkshop(workshop.id);
-              setWorkshops(workshops.filter(w => w.id !== workshop.id));
+              setWorkshops((prev) => prev.filter((entry) => entry.id !== workshop.id));
               Alert.alert("Deleted", "Workshop has been removed");
             } catch (err) {
               Alert.alert("Error", err.message || "Could not delete workshop");
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
 
   const renderWorkshop = ({ item }) => {
-    const imageUrl = item.images && item.images.length > 0 ? item.images[0] : null;
+    const imageUrl = item.coverImage || (item.images && item.images.length > 0 ? item.images[0] : null);
+    const statusMeta = getStatusMeta(item.status);
 
     return (
       <Pressable
@@ -94,8 +104,13 @@ export default function MyWorkshopsScreen({ navigation }) {
         )}
 
         <View style={styles.cardContent}>
-          <View style={styles.ownedBadge}>
-            <Text style={styles.ownedBadgeText}>Your Workshop</Text>
+          <View style={styles.badgeRow}>
+            <View style={styles.ownedBadge}>
+              <Text style={styles.ownedBadgeText}>Your Workshop</Text>
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: statusMeta.bg }]}> 
+              <Text style={[styles.statusBadgeText, { color: statusMeta.color }]}>{statusMeta.label}</Text>
+            </View>
           </View>
 
           <Text style={styles.cardTitle} numberOfLines={1}>
@@ -112,11 +127,20 @@ export default function MyWorkshopsScreen({ navigation }) {
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Price</Text>
-              <Text style={styles.infoValue}>¥{item.priceYen.toLocaleString()}</Text>
+              <Text style={styles.infoValue}>¥{Number(item.priceYen || 0).toLocaleString()}</Text>
             </View>
           </View>
 
           <View style={styles.buttonRow}>
+            <Pressable
+              style={styles.editButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                navigation.navigate("CreateWorkshop", { workshop: item });
+              }}
+            >
+              <Text style={styles.editButtonText}>Edit & Re-submit</Text>
+            </Pressable>
             <Pressable
               style={styles.deleteButton}
               onPress={(e) => {
@@ -140,7 +164,6 @@ export default function MyWorkshopsScreen({ navigation }) {
     );
   }
 
-  // Guest mode - require authentication
   if (!authUser) {
     return (
       <View style={styles.centerContainer}>
@@ -149,10 +172,7 @@ export default function MyWorkshopsScreen({ navigation }) {
         <Text style={styles.emptyText}>
           Sign in to create and manage your workshops
         </Text>
-        <Pressable 
-          style={styles.authButton}
-          onPress={() => navigation.navigate("Login")}
-        >
+        <Pressable style={styles.authButton} onPress={() => navigation.navigate("Login")}>
           <Text style={styles.authButtonText}>Sign In</Text>
         </Pressable>
       </View>
@@ -165,8 +185,11 @@ export default function MyWorkshopsScreen({ navigation }) {
         <PencilIcon size={56} color="#DDD" style={styles.emptyIcon} />
         <Text style={styles.emptyTitle}>No workshops yet</Text>
         <Text style={styles.emptyText}>
-          Your hosted workshops will appear here
+          Create your first workshop and submit it for admin review.
         </Text>
+        <Pressable style={styles.createButton} onPress={() => navigation.navigate("CreateWorkshop")}>
+          <Text style={styles.createButtonText}>Create Workshop</Text>
+        </Pressable>
       </View>
     );
   }
@@ -176,7 +199,7 @@ export default function MyWorkshopsScreen({ navigation }) {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Workshops</Text>
         <Text style={styles.headerCount}>
-          {workshops.length} workshop{workshops.length !== 1 ? 's' : ''}
+          {workshops.length} workshop{workshops.length !== 1 ? "s" : ""}
         </Text>
       </View>
 
@@ -187,6 +210,10 @@ export default function MyWorkshopsScreen({ navigation }) {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       />
+
+      <Pressable style={styles.fab} onPress={() => navigation.navigate("CreateWorkshop")}>
+        <PlusIcon size={24} color="#FFFFFF" />
+      </Pressable>
     </View>
   );
 }
@@ -259,11 +286,14 @@ const styles = StyleSheet.create({
     height: 140,
     backgroundColor: "#F5F1E8",
   },
-  cardImageText: {
-    fontSize: 32,
-  },
   cardContent: {
     padding: 16,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
   },
   ownedBadge: {
     alignSelf: "flex-start",
@@ -271,12 +301,20 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     backgroundColor: "#E8F4F8",
     borderRadius: 8,
-    marginBottom: 12,
   },
   ownedBadgeText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#3498db",
+    color: "#3498DB",
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
   cardTitle: {
     fontSize: 18,
@@ -316,6 +354,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
+  editButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#1F1F1F",
+    backgroundColor: "#1F1F1F",
+    alignItems: "center",
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
   deleteButton: {
     flex: 1,
     paddingVertical: 12,
@@ -331,7 +383,6 @@ const styles = StyleSheet.create({
     color: "#C1121F",
   },
   emptyIcon: {
-    fontSize: 64,
     marginBottom: 16,
   },
   emptyTitle: {
@@ -357,5 +408,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "#FFFFFF",
+  },
+  createButton: {
+    marginTop: 24,
+    backgroundColor: "#1F1F1F",
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  createButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  fab: {
+    position: "absolute",
+    right: 24,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#1F1F1F",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 });

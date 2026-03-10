@@ -9,6 +9,10 @@ import WorkshopDetailsScreen from "../screens/WorkshopDetailsScreen";
 import AllReviewsScreen from "../screens/AllReviewsScreen";
 import AllPicturesScreen from "../screens/AllPicturesScreen";
 import MyWorkshopsScreen from "../screens/MyWorkshopsScreen";
+import HostSetupScreen from "../screens/HostSetupScreen";
+import TranslatorSetupScreen from "../screens/TranslatorSetupScreen";
+import CreateWorkshopScreen from "../screens/CreateWorkshopScreen";
+import AdminReviewScreen from "../screens/AdminReviewScreen";
 
 const RootStack = createNativeStackNavigator();
 
@@ -52,6 +56,42 @@ export default function RootNavigator() {
         component={MyWorkshopsScreen}
         options={{
           title: "My Workshops",
+          headerBackTitleVisible: false,
+        }}
+      />
+
+      <RootStack.Screen
+        name="CreateWorkshop"
+        component={CreateWorkshopScreen}
+        options={{
+          title: "Create Workshop",
+          headerBackTitleVisible: false,
+        }}
+      />
+
+      <RootStack.Screen
+        name="HostSetup"
+        component={HostSetupScreen}
+        options={{
+          title: "Host Setup",
+          headerBackTitleVisible: false,
+        }}
+      />
+
+      <RootStack.Screen
+        name="TranslatorSetup"
+        component={TranslatorSetupScreen}
+        options={{
+          title: "Translator Setup",
+          headerBackTitleVisible: false,
+        }}
+      />
+
+      <RootStack.Screen
+        name="AdminReview"
+        component={AdminReviewScreen}
+        options={{
+          title: "Admin Review",
           headerBackTitleVisible: false,
         }}
       />

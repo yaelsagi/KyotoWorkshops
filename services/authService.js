@@ -46,6 +46,8 @@ export async function signUpWithEmail(email, password, displayName) {
         host: false,
         translator: false,
       },
+      hostApplicationStatus: 'none',
+      translatorApplicationStatus: 'none',
       languages: [],
       photoURL: null, // profile photo will be added later
       createdAt: new Date().toISOString(),

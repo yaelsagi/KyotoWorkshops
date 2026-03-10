@@ -13,13 +13,31 @@
 // - Validation ensures data integrity before display
 // - Graceful degradation: show cached data or empty state if network fails
 
-import { collection, getDocs, doc, getDoc, query, where, addDoc, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc, arrayUnion, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { db, storage } from '../firebase/firebase';
 import { ALL_OPTION, KYOTO_WARDS } from '../constants/kyotoWards';
 import { normalizeWardName } from '../utils/normalizeWardName';
+
+const KYOTO_DEFAULT_COORDINATES = {
+  lat: 35.0116,
+  lng: 135.7681,
+};
+
+const WORKSHOP_STATUS = {
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+};
+
+const CATEGORY_SUGGESTION_STATUS = {
+  NONE: 'none',
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+};
 
 function normalizeWorkshopLocation(workshop) {
   if (!workshop || typeof workshop !== 'object') {
@@ -29,6 +47,105 @@ function normalizeWorkshopLocation(workshop) {
   return {
     ...workshop,
     ward: normalizeWardName(workshop.ward),
+  };
+}
+
+function toWorkshopCategory(workshop) {
+  if (workshop?.category) {
+    return workshop.category;
+  }
+
+  if (Array.isArray(workshop?.categories) && workshop.categories.length > 0) {
+    return workshop.categories[0];
+  }
+
+  return null;
+}
+
+function normalizeWorkshopRecord(workshop) {
+  const normalized = normalizeWorkshopLocation(workshop);
+  if (!normalized || typeof normalized !== 'object') {
+    return normalized;
+  }
+
+  const categories = Array.isArray(normalized.categories)
+    ? normalized.categories.filter(Boolean)
+    : (normalized.category ? [normalized.category] : []);
+
+  return {
+    ...normalized,
+    categories,
+    category: toWorkshopCategory({ ...normalized, categories }),
+    status: normalized.status || WORKSHOP_STATUS.APPROVED,
+    customCategorySuggestion: normalized.customCategorySuggestion || null,
+    customCategorySuggestionStatus:
+      normalized.customCategorySuggestionStatus ||
+      (normalized.customCategorySuggestion ? CATEGORY_SUGGESTION_STATUS.PENDING : CATEGORY_SUGGESTION_STATUS.NONE),
+  };
+}
+
+async function uploadImageAsset(workshopId, imageAsset, kind, index = 0) {
+  if (!workshopId || !imageAsset?.uri) {
+    throw new Error('Workshop ID and image asset are required');
+  }
+
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).slice(2, 8);
+  const extension = imageAsset?.fileName?.split('.').pop() || 'jpg';
+  const imageRef = ref(storage, `images/${workshopId}/${kind}_${index}_${timestamp}_${random}.${extension}`);
+
+  const blob = await fetch(imageAsset.uri).then((response) => response.blob());
+  await uploadBytes(imageRef, blob);
+  return getDownloadURL(imageRef);
+}
+
+function validateWorkshopSubmission(workshop) {
+  const errors = [];
+
+  if (!workshop?.title || workshop.title.trim() === '') {
+    errors.push('Title is required');
+  }
+
+  const categories = Array.isArray(workshop?.categories) ? workshop.categories : [];
+  if (categories.length === 0) {
+    errors.push('At least one category is required');
+  }
+
+  if (!workshop?.ward) {
+    errors.push('Ward is required');
+  }
+
+  if (!workshop?.address || workshop.address.trim() === '') {
+    errors.push('Address is required');
+  }
+
+  if (!workshop?.duration || workshop.duration.trim() === '') {
+    errors.push('Duration is required');
+  }
+
+  if (!workshop?.description || workshop.description.trim() === '') {
+    errors.push('Description is required');
+  }
+
+  if (typeof workshop?.priceYen !== 'number' || Number.isNaN(workshop.priceYen) || workshop.priceYen <= 0) {
+    errors.push('Price must be a positive number');
+  }
+
+  if (!Number.isInteger(workshop?.maxParticipants) || workshop.maxParticipants <= 0) {
+    errors.push('Maximum participants must be a positive integer');
+  }
+
+  if (!workshop?.coverImageAsset?.uri) {
+    errors.push('Cover image is required');
+  }
+
+  if (!Array.isArray(workshop?.galleryImageAssets) || workshop.galleryImageAssets.length < 3) {
+    errors.push('At least 3 gallery images are required');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
   };
 }
 
@@ -94,7 +211,11 @@ export async function fetchWorkshops() {
     
     // Convert Firebase documents to plain objects
     const workshops = snapshot.docs.map(document => {
-      const data = normalizeWorkshopLocation({ id: document.id, ...document.data() });
+      const data = normalizeWorkshopRecord({ id: document.id, ...document.data() });
+
+      if (data.status !== WORKSHOP_STATUS.APPROVED) {
+        return null;
+      }
       
       // Make sure each workshop has valid data before returning it
       const validation = validateWorkshopData(data);
@@ -153,7 +274,11 @@ export async function fetchWorkshopById(workshopId) {
       return null;
     }
     
-    const workshopData = normalizeWorkshopLocation({ id: snapshot.id, ...snapshot.data() });
+    const workshopData = normalizeWorkshopRecord({ id: snapshot.id, ...snapshot.data() });
+
+    if (workshopData.status !== WORKSHOP_STATUS.APPROVED) {
+      return null;
+    }
     
     // Validate before returning
     const validation = validateWorkshopData(workshopData);
@@ -173,25 +298,7 @@ export async function fetchWorkshopById(workshopId) {
 // Search workshops by category, ward, or price range
 export async function searchWorkshops(filters = {}) {
   try {
-    let workshopQuery = collection(db, 'workshops');
-    
-    // Add filters if provided
-    const constraints = [];
-    
-    if (filters.category && filters.category !== 'Any') {
-      constraints.push(where('category', '==', filters.category));
-    }
-    
-    if (filters.isTop) {
-      constraints.push(where('isTop', '==', true));
-    }
-    
-    // Build query with all constraints
-    if (constraints.length > 0) {
-      workshopQuery = query(workshopQuery, ...constraints);
-    }
-    
-    const snapshot = await getDocs(workshopQuery);
+    const snapshot = await getDocs(collection(db, 'workshops'));
     
     if (snapshot.empty) {
       return [];
@@ -199,8 +306,23 @@ export async function searchWorkshops(filters = {}) {
     
     // Convert and validate results
     const results = snapshot.docs
-      .map(doc => normalizeWorkshopLocation({ id: doc.id, ...doc.data() }))
+      .map(doc => normalizeWorkshopRecord({ id: doc.id, ...doc.data() }))
       .filter(workshop => {
+        if (workshop.status !== WORKSHOP_STATUS.APPROVED) {
+          return false;
+        }
+
+        if (filters.category && filters.category !== 'Any') {
+          const categories = Array.isArray(workshop.categories) ? workshop.categories : [];
+          if (!categories.includes(filters.category) && workshop.category !== filters.category) {
+            return false;
+          }
+        }
+
+        if (filters.isTop && workshop.isTop !== true) {
+          return false;
+        }
+
         const validation = validateWorkshopData(workshop);
         return validation.valid;
       });
@@ -232,24 +354,51 @@ export async function createWorkshop(workshopData, ownerId) {
     throw new Error('Owner ID required to create workshop');
   }
 
-  const normalizedWorkshopData = normalizeWorkshopLocation(workshopData);
-
-  // Validate the data before sending to database
-  const validation = validateWorkshopData(normalizedWorkshopData);
-  
+  const validation = validateWorkshopSubmission(workshopData);
   if (!validation.valid) {
     throw new Error(`Invalid workshop data: ${validation.errors.join(', ')}`);
   }
   
   try {
     const workshopCollection = collection(db, 'workshops');
-    const documentRef = await addDoc(workshopCollection, {
-      ...normalizedWorkshopData,
+    const workshopDoc = doc(workshopCollection);
+    const workshopId = workshopDoc.id;
+
+    const coverImageUrl = await uploadImageAsset(workshopId, workshopData.coverImageAsset, 'cover', 0);
+    const galleryImageUrls = await Promise.all(
+      workshopData.galleryImageAssets.map((imageAsset, index) => uploadImageAsset(workshopId, imageAsset, 'gallery', index))
+    );
+
+    const now = new Date().toISOString();
+    const normalizedWard = normalizeWardName(workshopData.ward);
+    const normalizedWorkshopData = {
       ownerId,
-      createdAt: new Date().toISOString(),
-    });
-    
-    return { id: documentRef.id, ...normalizedWorkshopData, ownerId };
+      title: workshopData.title.trim(),
+      categories: workshopData.categories,
+      category: workshopData.categories[0],
+      customCategorySuggestion: workshopData.customCategorySuggestion || null,
+      customCategorySuggestionStatus: workshopData.customCategorySuggestion
+        ? CATEGORY_SUGGESTION_STATUS.PENDING
+        : CATEGORY_SUGGESTION_STATUS.NONE,
+      ward: normalizedWard,
+      address: workshopData.address.trim(),
+      duration: workshopData.duration,
+      maxParticipants: workshopData.maxParticipants,
+      description: workshopData.description.trim(),
+      whatsIncluded: workshopData.whatsIncluded || '',
+      priceYen: workshopData.priceYen,
+      coverImage: coverImageUrl,
+      images: [coverImageUrl, ...galleryImageUrls],
+      lat: KYOTO_DEFAULT_COORDINATES.lat,
+      lng: KYOTO_DEFAULT_COORDINATES.lng,
+      status: WORKSHOP_STATUS.PENDING,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await setDoc(workshopDoc, normalizedWorkshopData);
+
+    return { id: workshopId, ...normalizedWorkshopData };
     
   } catch (error) {
     console.error('Failed to create workshop:', error);
@@ -265,11 +414,77 @@ export async function updateWorkshop(workshopId, updates) {
   
   try {
     const workshopDoc = doc(db, 'workshops', workshopId);
-    
+
+    const existingSnapshot = await getDoc(workshopDoc);
+    if (!existingSnapshot.exists()) {
+      throw new Error('Workshop not found');
+    }
+
+    const existingWorkshop = normalizeWorkshopRecord({
+      id: existingSnapshot.id,
+      ...existingSnapshot.data(),
+    });
+
     const normalizedUpdates = normalizeWorkshopLocation(updates);
 
+    const incomingCover = normalizedUpdates.coverImageAsset || existingWorkshop.coverImage;
+    let coverImage = existingWorkshop.coverImage || null;
+    if (typeof incomingCover === 'string' && incomingCover.startsWith('http')) {
+      coverImage = incomingCover;
+    } else if (incomingCover?.uri && incomingCover.uri.startsWith('http')) {
+      coverImage = incomingCover.uri;
+    } else if (incomingCover?.uri) {
+      coverImage = await uploadImageAsset(workshopId, incomingCover, 'cover', 0);
+    }
+
+    const incomingGallery = Array.isArray(normalizedUpdates.galleryImageAssets)
+      ? normalizedUpdates.galleryImageAssets
+      : existingWorkshop.images?.slice(1) || [];
+
+    const galleryImageUrls = await Promise.all(
+      incomingGallery.map(async (imageAsset, index) => {
+        if (typeof imageAsset === 'string' && imageAsset.startsWith('http')) {
+          return imageAsset;
+        }
+
+        if (imageAsset?.uri && imageAsset.uri.startsWith('http')) {
+          return imageAsset.uri;
+        }
+
+        if (imageAsset?.uri) {
+          return uploadImageAsset(workshopId, imageAsset, 'gallery', index);
+        }
+
+        return null;
+      })
+    );
+
+    const cleanGallery = galleryImageUrls.filter(Boolean);
+
+    if (!coverImage || cleanGallery.length < 3) {
+      throw new Error('Cover image and at least 3 gallery images are required');
+    }
+
     await updateDoc(workshopDoc, {
-      ...normalizedUpdates,
+      title: normalizedUpdates.title,
+      categories: normalizedUpdates.categories,
+      category: Array.isArray(normalizedUpdates.categories) && normalizedUpdates.categories.length > 0
+        ? normalizedUpdates.categories[0]
+        : existingWorkshop.category,
+      customCategorySuggestion: normalizedUpdates.customCategorySuggestion || null,
+      customCategorySuggestionStatus: normalizedUpdates.customCategorySuggestion
+        ? CATEGORY_SUGGESTION_STATUS.PENDING
+        : CATEGORY_SUGGESTION_STATUS.NONE,
+      ward: normalizeWardName(normalizedUpdates.ward),
+      address: normalizedUpdates.address,
+      duration: normalizedUpdates.duration,
+      maxParticipants: normalizedUpdates.maxParticipants,
+      description: normalizedUpdates.description,
+      whatsIncluded: normalizedUpdates.whatsIncluded || '',
+      priceYen: normalizedUpdates.priceYen,
+      coverImage,
+      images: [coverImage, ...cleanGallery],
+      status: WORKSHOP_STATUS.PENDING,
       updatedAt: new Date().toISOString(),
     });
     
@@ -311,7 +526,7 @@ export async function fetchWorkshopsByOwner(ownerId) {
     const workshops = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      workshops.push(normalizeWorkshopLocation({
+      workshops.push(normalizeWorkshopRecord({
         id: doc.id,
         ...data,
       }));
@@ -321,6 +536,64 @@ export async function fetchWorkshopsByOwner(ownerId) {
   } catch (error) {
     console.error('Error fetching owner workshops:', error);
     throw new Error('Could not load your workshops');
+  }
+}
+
+export async function fetchPendingWorkshopsForReview() {
+  try {
+    const workshopsCollection = collection(db, 'workshops');
+    const pendingQuery = query(workshopsCollection, where('status', '==', WORKSHOP_STATUS.PENDING));
+    const querySnapshot = await getDocs(pendingQuery);
+
+    return querySnapshot.docs.map((document) => normalizeWorkshopRecord({
+      id: document.id,
+      ...document.data(),
+    }));
+  } catch (error) {
+    console.error('Error fetching pending workshops:', error);
+    throw new Error('Could not load pending workshops');
+  }
+}
+
+export async function reviewWorkshop(workshopId, nextStatus) {
+  if (!workshopId) {
+    throw new Error('Workshop ID is required');
+  }
+
+  if (![WORKSHOP_STATUS.APPROVED, WORKSHOP_STATUS.REJECTED].includes(nextStatus)) {
+    throw new Error('Invalid workshop review status');
+  }
+
+  try {
+    const workshopDoc = doc(db, 'workshops', workshopId);
+    await updateDoc(workshopDoc, {
+      status: nextStatus,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error reviewing workshop:', error);
+    throw new Error('Could not review workshop');
+  }
+}
+
+export async function reviewWorkshopCategorySuggestion(workshopId, nextStatus) {
+  if (!workshopId) {
+    throw new Error('Workshop ID is required');
+  }
+
+  if (![CATEGORY_SUGGESTION_STATUS.APPROVED, CATEGORY_SUGGESTION_STATUS.REJECTED].includes(nextStatus)) {
+    throw new Error('Invalid category suggestion review status');
+  }
+
+  try {
+    const workshopDoc = doc(db, 'workshops', workshopId);
+    await updateDoc(workshopDoc, {
+      customCategorySuggestionStatus: nextStatus,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error reviewing category suggestion:', error);
+    throw new Error('Could not review category suggestion');
   }
 }
 

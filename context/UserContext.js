@@ -34,6 +34,8 @@ export const UserProvider = ({ children }) => {
             displayName: profile.displayName || authUser.displayName,
             photoURL: profile.photoURL || null,
             roles: profile.roles || { learner: true, host: false, translator: false },
+            hostApplicationStatus: profile.hostApplicationStatus || 'none',
+            translatorApplicationStatus: profile.translatorApplicationStatus || 'none',
             languages: profile.languages || [],
             createdAt: profile.createdAt,
           });
@@ -47,6 +49,8 @@ export const UserProvider = ({ children }) => {
             displayName: authUser.displayName,
             photoURL: null,
             roles: { learner: true, host: false, translator: false },
+            hostApplicationStatus: 'none',
+            translatorApplicationStatus: 'none',
             languages: [],
           });
         }
@@ -61,6 +65,8 @@ export const UserProvider = ({ children }) => {
           displayName: authUser.displayName,
           photoURL: null,
           roles: { learner: true, host: false, translator: false },
+          hostApplicationStatus: 'none',
+          translatorApplicationStatus: 'none',
           languages: [],
         });
       } finally {

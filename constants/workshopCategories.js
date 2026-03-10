@@ -3,7 +3,7 @@ export const WORKSHOP_CATEGORIES = [
   "Calligraphy",
   "Ceramics",
   "Kintsugi",
-  "Yuzen Dyeing",
+  "Yuzen",
   "Indigo Dyeing",
   "Kumihimo",
   "Tea Ceremony",
