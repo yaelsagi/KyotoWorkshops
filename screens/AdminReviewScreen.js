@@ -15,25 +15,16 @@ import {
   reviewWorkshop,
   reviewWorkshopCategorySuggestion,
 } from "../services/workshopService";
-import {
-  fetchPendingHostApplications,
-  reviewHostApplication,
-} from "../services/userService";
 
 export default function AdminReviewScreen() {
   const [loading, setLoading] = useState(true);
   const [pendingWorkshops, setPendingWorkshops] = useState([]);
-  const [pendingHosts, setPendingHosts] = useState([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [workshops, hosts] = await Promise.all([
-        fetchPendingWorkshopsForReview(),
-        fetchPendingHostApplications(),
-      ]);
+      const workshops = await fetchPendingWorkshopsForReview();
       setPendingWorkshops(workshops);
-      setPendingHosts(hosts);
     } catch (error) {
       Alert.alert("Error", error.message || "Could not load review queues");
     } finally {
@@ -74,15 +65,6 @@ export default function AdminReviewScreen() {
     }
   };
 
-  const handleReviewHostApplication = async (uid, approved) => {
-    try {
-      await reviewHostApplication(uid, approved);
-      setPendingHosts((prev) => prev.filter((host) => host.uid !== uid));
-    } catch (error) {
-      Alert.alert("Error", error.message || "Could not review host application");
-    }
-  };
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -95,7 +77,7 @@ export default function AdminReviewScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Admin Review (Lightweight)</Text>
       <Text style={styles.subtitle}>
-        Review pending workshops, category suggestions, and host applications.
+        Review pending workshops and category suggestions.
       </Text>
 
       <View style={styles.section}>
@@ -150,38 +132,6 @@ export default function AdminReviewScreen() {
                   </View>
                 </>
               ) : null}
-            </View>
-          ))
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Pending Host Applications</Text>
-          <Text style={styles.sectionCount}>{pendingHosts.length}</Text>
-        </View>
-
-        {pendingHosts.length === 0 ? (
-          <Text style={styles.emptyText}>No pending host applications.</Text>
-        ) : (
-          pendingHosts.map((host) => (
-            <View key={host.uid} style={styles.card}>
-              <Text style={styles.cardTitle}>{host.displayName || "Unnamed User"}</Text>
-              <Text style={styles.cardMeta}>{host.email}</Text>
-              <View style={styles.buttonRow}>
-                <Pressable
-                  style={[styles.button, styles.approveButton]}
-                  onPress={() => handleReviewHostApplication(host.uid, true)}
-                >
-                  <Text style={styles.buttonText}>Approve</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.button, styles.rejectButton]}
-                  onPress={() => handleReviewHostApplication(host.uid, false)}
-                >
-                  <Text style={styles.buttonText}>Reject</Text>
-                </Pressable>
-              </View>
             </View>
           ))
         )}

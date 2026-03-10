@@ -4,13 +4,12 @@ import { useUser } from "./UserContext";
 import { updateUserRoles } from "../services/userService";
 
 const USER_ROLES_KEY = "user_roles";
-const DEFAULT_ROLES = ["learner"];
 
 const UserCapabilitiesContext = createContext(null);
 
 export function UserCapabilitiesProvider({ children }) {
   const { currentUser } = useUser();
-  const [enabledRoles, setEnabledRoles] = useState(DEFAULT_ROLES);
+  const [enabledRoles, setEnabledRoles] = useState([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -18,7 +17,7 @@ export function UserCapabilitiesProvider({ children }) {
       try {
         const storedRoles = await AsyncStorage.getItem(USER_ROLES_KEY);
 
-        let parsedRoles = DEFAULT_ROLES;
+        let parsedRoles = [];
 
         if (currentUser?.roles) {
           parsedRoles = Object.keys(currentUser.roles).filter((role) => currentUser.roles[role]);
@@ -26,15 +25,12 @@ export function UserCapabilitiesProvider({ children }) {
           parsedRoles = JSON.parse(storedRoles);
         }
 
-        const safeRoles = Array.isArray(parsedRoles) && parsedRoles.length > 0 ? parsedRoles : DEFAULT_ROLES;
-        if (!safeRoles.includes("learner")) {
-          safeRoles.unshift("learner");
-        }
+        const safeRoles = Array.isArray(parsedRoles) ? parsedRoles : [];
 
         setEnabledRoles(safeRoles);
       } catch (err) {
         console.log("Failed loading capabilities", err);
-        setEnabledRoles(DEFAULT_ROLES);
+        setEnabledRoles([]);
       } finally {
         setReady(true);
       }
@@ -44,8 +40,6 @@ export function UserCapabilitiesProvider({ children }) {
   }, [currentUser]);
 
   const setCapabilityEnabled = async (role, enabled) => {
-    if (role === "learner") return;
-
     setEnabledRoles((prevRoles) => {
       let updatedRoles = [...prevRoles];
 
@@ -57,15 +51,10 @@ export function UserCapabilitiesProvider({ children }) {
         updatedRoles = updatedRoles.filter((item) => item !== role);
       }
 
-      if (!updatedRoles.includes("learner")) {
-        updatedRoles.unshift("learner");
-      }
-
       AsyncStorage.setItem(USER_ROLES_KEY, JSON.stringify(updatedRoles)).catch(() => {});
 
       if (currentUser?.uid) {
         const rolesObject = {
-          learner: updatedRoles.includes("learner"),
           host: updatedRoles.includes("host"),
           translator: updatedRoles.includes("translator"),
         };
@@ -83,7 +72,6 @@ export function UserCapabilitiesProvider({ children }) {
 
   const capabilities = useMemo(
     () => ({
-      learner: true,
       host: enabledRoles.includes("host"),
       translator: enabledRoles.includes("translator"),
     }),

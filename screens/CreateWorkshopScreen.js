@@ -36,7 +36,7 @@ const DURATION_OPTIONS = [
 ];
 
 export default function CreateWorkshopScreen({ navigation, route }) {
-  const { currentUser } = useUser();
+  const { currentUser, updateUser } = useUser();
   const [submitting, setSubmitting] = useState(false);
   const editingWorkshop = route?.params?.workshop || null;
   const isEditMode = Boolean(editingWorkshop?.id);
@@ -266,6 +266,13 @@ export default function CreateWorkshopScreen({ navigation, route }) {
         });
       } else {
         await createWorkshop(workshopData, currentUser?.uid);
+
+        updateUser({
+          roles: {
+            ...(currentUser?.roles || {}),
+            host: true,
+          },
+        });
       }
 
       Alert.alert(

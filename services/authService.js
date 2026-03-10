@@ -42,11 +42,9 @@ export async function signUpWithEmail(email, password, displayName) {
       displayName: displayName.trim(),
       email: user.email,
       roles: {
-        learner: true,
         host: false,
         translator: false,
       },
-      hostApplicationStatus: 'none',
       translatorApplicationStatus: 'none',
       languages: [],
       photoURL: null, // profile photo will be added later

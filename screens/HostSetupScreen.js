@@ -1,56 +1,30 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import { PencilIcon } from "react-native-heroicons/outline";
 import { useUser } from "../context/UserContext";
-import { submitHostApplication } from "../services/userService";
 
 export default function HostSetupScreen({ navigation }) {
-  const { currentUser, updateUser } = useUser();
-  const isPending = currentUser?.hostApplicationStatus === "pending";
-  const isApproved = currentUser?.hostApplicationStatus === "approved";
-
-  const handleEnableHost = async () => {
-    if (!currentUser?.uid) {
-      Alert.alert("Sign in required", "Please sign in to apply as a host.");
-      return;
-    }
-
-    await submitHostApplication(currentUser.uid);
-    updateUser({ hostApplicationStatus: "pending" });
-
-    Alert.alert("Application submitted", "Your host application is now pending admin review.", [
-      {
-        text: "Continue",
-        onPress: () => navigation.goBack(),
-      },
-    ]);
-  };
+  const { currentUser } = useUser();
+  const isHost = Boolean(currentUser?.roles?.host);
 
   return (
     <View style={styles.container}>
       <PencilIcon size={48} color="#1F1F1F" />
       <Text style={styles.title}>Create a workshop</Text>
       <Text style={styles.description}>
-        {isApproved
-          ? "Your host access is approved. You can now create and manage workshops."
-          : isPending
-            ? "Your host application is currently pending admin review."
-            : "Submit your host application. Once approved by admin, you'll be able to create and manage workshops."}
+        {isHost
+          ? "You can manage your workshop submissions from your host dashboard."
+          : "Submit your first workshop to open your host dashboard permanently."}
       </Text>
 
-      {isApproved ? (
-        <Pressable style={styles.primaryButton} onPress={() => navigation.replace("CreateWorkshop")}>
-          <Text style={styles.primaryButtonText}>Create Workshop</Text>
-        </Pressable>
-      ) : (
-        <Pressable
-          style={[styles.primaryButton, isPending && styles.primaryButtonDisabled]}
-          onPress={handleEnableHost}
-          disabled={isPending}
-        >
-          <Text style={styles.primaryButtonText}>{isPending ? "Application Pending" : "Submit Host Application"}</Text>
-        </Pressable>
-      )}
+      <Pressable
+        style={styles.primaryButton}
+        onPress={() => navigation.replace(isHost ? "MyWorkshops" : "CreateWorkshop")}
+      >
+        <Text style={styles.primaryButtonText}>
+          {isHost ? "Open Host Dashboard" : "Submit First Workshop"}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -82,9 +56,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 10,
-  },
-  primaryButtonDisabled: {
-    backgroundColor: "#9A9A9A",
   },
   primaryButtonText: {
     color: "#FFFFFF",

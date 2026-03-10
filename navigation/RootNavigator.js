@@ -9,7 +9,6 @@ import WorkshopDetailsScreen from "../screens/WorkshopDetailsScreen";
 import AllReviewsScreen from "../screens/AllReviewsScreen";
 import AllPicturesScreen from "../screens/AllPicturesScreen";
 import MyWorkshopsScreen from "../screens/MyWorkshopsScreen";
-import HostSetupScreen from "../screens/HostSetupScreen";
 import TranslatorSetupScreen from "../screens/TranslatorSetupScreen";
 import CreateWorkshopScreen from "../screens/CreateWorkshopScreen";
 import AdminReviewScreen from "../screens/AdminReviewScreen";
@@ -65,15 +64,6 @@ export default function RootNavigator() {
         component={CreateWorkshopScreen}
         options={{
           title: "Create Workshop",
-          headerBackTitleVisible: false,
-        }}
-      />
-
-      <RootStack.Screen
-        name="HostSetup"
-        component={HostSetupScreen}
-        options={{
-          title: "Host Setup",
           headerBackTitleVisible: false,
         }}
       />

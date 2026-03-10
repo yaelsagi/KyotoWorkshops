@@ -398,6 +398,23 @@ export async function createWorkshop(workshopData, ownerId) {
 
     await setDoc(workshopDoc, normalizedWorkshopData);
 
+    const userDocRef = doc(db, 'users', ownerId);
+    const userSnapshot = await getDoc(userDocRef);
+    if (userSnapshot.exists()) {
+      const userData = userSnapshot.data();
+      const currentRoles = userData?.roles || {};
+
+      if (!currentRoles.host) {
+        await updateDoc(userDocRef, {
+          roles: {
+            ...currentRoles,
+            host: true,
+          },
+          updatedAt: now,
+        });
+      }
+    }
+
     return { id: workshopId, ...normalizedWorkshopData };
     
   } catch (error) {

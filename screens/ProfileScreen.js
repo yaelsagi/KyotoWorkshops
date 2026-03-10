@@ -491,26 +491,19 @@ export default function ProfileScreen({ navigation }) {
         </Pressable>
         <Pressable 
           style={styles.statCard}
-          onPress={() => {
-            if (capabilities.host) {
-              navigation.navigate("MyWorkshops");
-            } else if (currentUser?.hostApplicationStatus === "pending") {
-              navigation.navigate("HostSetup");
-            } else {
-              navigation.navigate("HostSetup");
-            }
-          }}
+          onPress={() =>
+            capabilities.host
+              ? navigation.navigate("MyWorkshops")
+              : navigation.navigate("CreateWorkshop")
+          }
         >
           <Text style={styles.statValue}>🎨</Text>
           <Text style={styles.statLabel}>
-            {capabilities.host
-              ? "My Workshops"
-              : currentUser?.hostApplicationStatus === "pending"
-                ? "Host Application Pending"
-                : "Host a Workshop"}
+            {capabilities.host ? "Workshop Host Dashboard" : "Host a Workshop"}
           </Text>
         </Pressable>
       </View>
+
 
       {/* Settings Section */}
       <View style={styles.section}>
