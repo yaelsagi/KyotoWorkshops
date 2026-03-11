@@ -1,5 +1,10 @@
 # To-Do: Firebase Authentication Implementation
 
+## 🔜 Current Follow-ups
+
+- add heptics (added already to create workshop screen) and fallback
+- go over all scripts to check for magic numbers
+
 ## ✅ Phase 1: Auth Foundation (COMPLETED)
 
 ### Completed Tasks

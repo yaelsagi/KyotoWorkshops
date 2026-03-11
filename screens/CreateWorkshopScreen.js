@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  Modal,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -18,10 +19,16 @@ import {
   PhotoIcon,
   InformationCircleIcon,
 } from "react-native-heroicons/outline";
+// Haptic feedback
+import * as Haptics from "expo-haptics";
 import { useUser } from "../context/UserContext";
 import { WORKSHOP_CATEGORIES } from "../constants/workshopCategories";
 import { KYOTO_WARDS } from "../constants/kyotoWards";
-import { createWorkshop, updateWorkshop } from "../services/workshopService";
+import {
+  fetchPlatformCategories,
+  createWorkshop,
+  updateWorkshop,
+} from "../services/workshopService";
 
 const DURATION_OPTIONS = [
   "1 hour",
@@ -35,11 +42,22 @@ const DURATION_OPTIONS = [
   "Full day (6-8 hours)",
 ];
 
+const MAX_CATEGORIES = 3;
+const MIN_GALLERY_IMAGES = 3;
+const MAX_GALLERY_IMAGES = 10;
+
+const TITLE_PATTERN = /^[A-Za-z0-9 ]+$/;
+const TITLE_INVALID_CHARS_PATTERN = /[^A-Za-z0-9 ]/g;
+const CATEGORY_SUGGESTION_INVALID_CHARS_PATTERN = /[^A-Za-z0-9 ]/g;
+const MULTIPLE_SPACES_PATTERN = /\s+/g;
+const LEADING_SPACES_PATTERN = /^\s+/;
+
 export default function CreateWorkshopScreen({ navigation, route }) {
   const { currentUser, updateUser } = useUser();
   const [submitting, setSubmitting] = useState(false);
   const editingWorkshop = route?.params?.workshop || null;
   const isEditMode = Boolean(editingWorkshop?.id);
+  const [activeSingleSelectPicker, setActiveSingleSelectPicker] = useState(null);
 
   // Workshop Details
   const [title, setTitle] = useState(editingWorkshop?.title || "");
@@ -51,6 +69,7 @@ export default function CreateWorkshopScreen({ navigation, route }) {
         : []
   );
   const [customCategorySuggestion, setCustomCategorySuggestion] = useState(editingWorkshop?.customCategorySuggestion || "");
+  const [customCategorySuggestionHasInvalidChars, setCustomCategorySuggestionHasInvalidChars] = useState(false);
 
   // Photos
   const [coverImage, setCoverImage] = useState(
@@ -70,14 +89,12 @@ export default function CreateWorkshopScreen({ navigation, route }) {
 
   // Schedule & Capacity
   const [duration, setDuration] = useState(editingWorkshop?.duration || "");
-  const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState(
     editingWorkshop?.maxParticipants ? String(editingWorkshop.maxParticipants) : ""
   );
 
   // Location
   const [selectedWard, setSelectedWard] = useState(editingWorkshop?.ward || "");
-  const [showWardPicker, setShowWardPicker] = useState(false);
   const [address, setAddress] = useState(editingWorkshop?.address || "");
 
   // Description
@@ -91,20 +108,88 @@ export default function CreateWorkshopScreen({ navigation, route }) {
     typeof editingWorkshop?.priceYen === "number" ? String(editingWorkshop.priceYen) : ""
   );
 
-  // Category selection - max 3
+  // Load approved categories, fallback to defaults
+  const [availableCategories, setAvailableCategories] = useState(WORKSHOP_CATEGORIES);
+  useEffect(() => {
+    let cancelled = false;
+    fetchPlatformCategories().then((cats) => {
+      if (!cancelled) setAvailableCategories(cats);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const isTitleInvalid = title.trim().length > 0 && !TITLE_PATTERN.test(title.trim());
+
+  // Remove invalid title characters while typing
+  const handleTitleChange = (text) => {
+    const sanitizedTitle = text.replace(TITLE_INVALID_CHARS_PATTERN, "");
+    setTitle(sanitizedTitle);
+  };
+
+  // Format category suggestion before saving
+  const normalizeCategorySuggestion = (text) => {
+    const sanitized = String(text || "")
+      .replace(CATEGORY_SUGGESTION_INVALID_CHARS_PATTERN, "")
+      .replace(MULTIPLE_SPACES_PATTERN, " ")
+      .trim();
+
+    if (!sanitized) {
+      return "";
+    }
+
+    return sanitized
+      .split(" ")
+      .filter(Boolean)
+      .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
+      .join(" ");
+  };
+
+  // Clean category suggestion input while typing
+  const handleCustomCategorySuggestionChange = (text) => {
+    const sanitized = String(text || "")
+      .replace(CATEGORY_SUGGESTION_INVALID_CHARS_PATTERN, "")
+      .replace(MULTIPLE_SPACES_PATTERN, " ")
+      .replace(LEADING_SPACES_PATTERN, "");
+
+    setCustomCategorySuggestionHasInvalidChars(sanitized !== text);
+    setCustomCategorySuggestion(sanitized);
+  };
+
+  // Limit category selection to three
   const toggleCategory = (category) => {
     if (selectedCategories.includes(category)) {
       setSelectedCategories(selectedCategories.filter((c) => c !== category));
     } else {
-      if (selectedCategories.length < 3) {
+      if (selectedCategories.length < MAX_CATEGORIES) {
         setSelectedCategories([...selectedCategories, category]);
       } else {
-        Alert.alert("Maximum Reached", "You can select up to 3 categories");
+        Alert.alert("Maximum Reached", `You can select up to ${MAX_CATEGORIES} categories`);
       }
     }
   };
 
-  // Image picker for cover image
+  const closeSingleSelectPicker = () => {
+    setActiveSingleSelectPicker(null);
+  };
+
+  // Picker config for duration and ward
+  const singleSelectPickerConfig = activeSingleSelectPicker === "duration"
+    ? {
+        title: "Select Duration",
+        selectedValue: duration,
+        options: DURATION_OPTIONS,
+        onSelect: (option) => setDuration(option),
+      }
+    : activeSingleSelectPicker === "ward"
+      ? {
+          title: "Select Ward",
+          selectedValue: selectedWard,
+          options: KYOTO_WARDS,
+          onSelect: (option) => setSelectedWard(option),
+        }
+      : null;
+
+  // Pick cover image
   const handlePickCoverImage = async () => {
     try {
       const permissionResult =
@@ -134,9 +219,16 @@ export default function CreateWorkshopScreen({ navigation, route }) {
     }
   };
 
-  // Image picker for gallery
+  // Pick gallery images
   const handleAddGalleryImage = async () => {
     try {
+      // Keep gallery within the upload limit
+      const remainingSlots = Math.max(0, MAX_GALLERY_IMAGES - galleryImages.length);
+      if (remainingSlots === 0) {
+        Alert.alert("Gallery Full", `You can upload up to ${MAX_GALLERY_IMAGES} gallery images.`);
+        return;
+      }
+
       const permissionResult =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -150,13 +242,15 @@ export default function CreateWorkshopScreen({ navigation, route }) {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [4, 3],
+        allowsMultipleSelection: true,
+        selectionLimit: remainingSlots,
+        allowsEditing: false,
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        setGalleryImages([...galleryImages, result.assets[0]]);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedAssets = result.assets.slice(0, remainingSlots);
+        setGalleryImages([...galleryImages, ...selectedAssets]);
       }
     } catch (error) {
       console.error("Error picking gallery image:", error);
@@ -169,12 +263,34 @@ export default function CreateWorkshopScreen({ navigation, route }) {
     setGalleryImages(galleryImages.filter((_, i) => i !== index));
   };
 
+  // Success haptic
+  const triggerSubmitSuccessHaptic = async () => {
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      // Haptic fallback
+      console.log("Haptics unavailable (success):", error?.message || error);
+    }
+  };
+
+  // Error haptic
+  const triggerSubmitErrorHaptic = async () => {
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } catch (error) {
+      // Haptic fallback
+      console.log("Haptics unavailable (error):", error?.message || error);
+    }
+  };
+
   // Validation
   const validateForm = () => {
     const errors = [];
 
     if (!title.trim()) {
       errors.push("Title is required");
+    } else if (!TITLE_PATTERN.test(title.trim())) {
+      errors.push("Workshop title can only include letters, numbers, and spaces (no symbols)");
     }
 
     if (selectedCategories.length === 0) {
@@ -185,8 +301,8 @@ export default function CreateWorkshopScreen({ navigation, route }) {
       errors.push("Cover image is required");
     }
 
-    if (galleryImages.length < 3) {
-      errors.push("At least 3 gallery images are required");
+    if (galleryImages.length < MIN_GALLERY_IMAGES) {
+      errors.push(`At least ${MIN_GALLERY_IMAGES} gallery images are required`);
     }
 
     if (!duration) {
@@ -221,6 +337,8 @@ export default function CreateWorkshopScreen({ navigation, route }) {
     const errors = validateForm();
 
     if (errors.length > 0) {
+      // Validation error haptic
+      await triggerSubmitErrorHaptic();
       Alert.alert(
         "Form Validation",
         "Please fix the following errors:\n\n" + errors.join("\n")
@@ -234,7 +352,7 @@ export default function CreateWorkshopScreen({ navigation, route }) {
       const workshopData = {
         title: title.trim(),
         categories: selectedCategories,
-        customCategorySuggestion: customCategorySuggestion.trim() || null,
+        customCategorySuggestion: normalizeCategorySuggestion(customCategorySuggestion) || null,
         coverImageAsset: coverImage,
         galleryImageAssets: galleryImages,
         duration,
@@ -275,6 +393,9 @@ export default function CreateWorkshopScreen({ navigation, route }) {
         });
       }
 
+      // Submit success haptic
+      await triggerSubmitSuccessHaptic();
+
       Alert.alert(
         "Workshop submitted for review",
         "Your workshop is saved and pending admin approval. It will appear publicly once approved.",
@@ -287,6 +408,8 @@ export default function CreateWorkshopScreen({ navigation, route }) {
       );
     } catch (error) {
       console.error("Error creating workshop:", error);
+      // Submit failure haptic
+      await triggerSubmitErrorHaptic();
       Alert.alert(
         "Error",
         "Could not create workshop. Please try again later."
@@ -297,7 +420,12 @@ export default function CreateWorkshopScreen({ navigation, route }) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      accessibilityLabel="Create workshop form"
+    >
       <Text style={styles.pageTitle}>{isEditMode ? "Edit Workshop" : "Create Workshop"}</Text>
       <Text style={styles.pageSubtitle}>
         {isEditMode
@@ -316,27 +444,53 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           style={styles.input}
           placeholder="e.g., Traditional Kintsugi for Beginners"
           value={title}
-          onChangeText={setTitle}
+          onChangeText={handleTitleChange}
           placeholderTextColor="#999"
+          accessibilityLabel="Workshop title"
+          accessibilityHint="Enter letters and numbers only. Symbols are not allowed."
         />
+        <Text style={styles.helperText}>Use letters and numbers only. Symbols are not allowed.</Text>
+        {isTitleInvalid ? (
+          <Text style={styles.errorText} accessibilityLiveRegion="polite">
+            Title cannot contain symbols.
+          </Text>
+        ) : null}
 
         <Text style={[styles.label, { marginTop: 20 }]}>
-          Categories (Select up to 3) <Text style={styles.required}>*</Text>
+          Categories (Select up to {MAX_CATEGORIES}) <Text style={styles.required}>*</Text>
         </Text>
         <View style={styles.categoryGrid}>
-          {WORKSHOP_CATEGORIES.map((category) => (
+          {availableCategories.map((category) => (
             <Pressable
               key={category}
               style={[
                 styles.categoryChip,
+                selectedCategories.length >= MAX_CATEGORIES &&
+                  !selectedCategories.includes(category) &&
+                  styles.categoryChipDisabled,
                 selectedCategories.includes(category) &&
                   styles.categoryChipSelected,
               ]}
+              disabled={selectedCategories.length >= MAX_CATEGORIES && !selectedCategories.includes(category)}
               onPress={() => toggleCategory(category)}
+              accessibilityRole="button"
+              accessibilityLabel={`Category ${category}`}
+              accessibilityHint={
+                selectedCategories.length >= MAX_CATEGORIES && !selectedCategories.includes(category)
+                  ? `Disabled because maximum of ${MAX_CATEGORIES} categories has been selected`
+                  : "Double tap to select or deselect category"
+              }
+              accessibilityState={{
+                selected: selectedCategories.includes(category),
+                disabled: selectedCategories.length >= MAX_CATEGORIES && !selectedCategories.includes(category),
+              }}
             >
               <Text
                 style={[
                   styles.categoryChipText,
+                  selectedCategories.length >= MAX_CATEGORIES &&
+                    !selectedCategories.includes(category) &&
+                    styles.categoryChipTextDisabled,
                   selectedCategories.includes(category) &&
                     styles.categoryChipTextSelected,
                 ]}
@@ -354,13 +508,19 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           style={styles.input}
           placeholder="Suggest a new category if yours isn't listed"
           value={customCategorySuggestion}
-          onChangeText={setCustomCategorySuggestion}
+          onChangeText={handleCustomCategorySuggestionChange}
           placeholderTextColor="#999"
+          accessibilityLabel="Other category suggestion"
+          accessibilityHint="Optional. Use letters and numbers only. Symbols and dots are not allowed."
         />
         <Text style={styles.helperText}>
-          💡 If your craft doesn't fit the categories above, suggest a new one
-          here
+          💡 Optional. Use letters and numbers only (no symbols or dots). Extra spaces are cleaned automatically.
         </Text>
+        {customCategorySuggestionHasInvalidChars ? (
+          <Text style={styles.errorText} accessibilityLiveRegion="polite">
+            Symbols and dots are not allowed in category suggestions.
+          </Text>
+        ) : null}
       </View>
 
       {/* Photos Section */}
@@ -379,6 +539,9 @@ export default function CreateWorkshopScreen({ navigation, route }) {
             <Pressable
               style={styles.removeImageButton}
               onPress={() => setCoverImage(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Remove cover image"
+              accessibilityHint="Removes the current cover image"
             >
               <XMarkIcon size={16} color="#FFF" />
             </Pressable>
@@ -387,6 +550,9 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           <Pressable
             style={styles.imagePickerButton}
             onPress={handlePickCoverImage}
+            accessibilityRole="button"
+            accessibilityLabel="Upload cover image"
+            accessibilityHint="Opens photo library to choose a single cover image"
           >
             <PhotoIcon size={32} color="#666" />
             <Text style={styles.imagePickerText}>Upload Cover Image</Text>
@@ -395,7 +561,7 @@ export default function CreateWorkshopScreen({ navigation, route }) {
         )}
 
         <Text style={[styles.label, { marginTop: 20 }]}>
-          Gallery Images (Minimum 3) <Text style={styles.required}>*</Text>
+          Gallery Images (Minimum {MIN_GALLERY_IMAGES}) <Text style={styles.required}>*</Text>
         </Text>
         <View style={styles.galleryGrid}>
           {galleryImages.map((image, index) => (
@@ -407,15 +573,21 @@ export default function CreateWorkshopScreen({ navigation, route }) {
               <Pressable
                 style={styles.removeGalleryImageButton}
                 onPress={() => handleRemoveGalleryImage(index)}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove gallery image ${index + 1}`}
+                accessibilityHint="Removes this gallery image"
               >
                 <XMarkIcon size={12} color="#FFF" />
               </Pressable>
             </View>
           ))}
-          {galleryImages.length < 10 && (
+          {galleryImages.length < MAX_GALLERY_IMAGES && (
             <Pressable
               style={styles.addGalleryButton}
               onPress={handleAddGalleryImage}
+              accessibilityRole="button"
+              accessibilityLabel="Add gallery images"
+              accessibilityHint="Opens photo library to select multiple gallery images"
             >
               <CameraIcon size={24} color="#666" />
               <Text style={styles.addGalleryText}>Add Photo</Text>
@@ -437,7 +609,11 @@ export default function CreateWorkshopScreen({ navigation, route }) {
         </Text>
         <Pressable
           style={styles.dropdownButton}
-          onPress={() => setShowDurationPicker(!showDurationPicker)}
+          onPress={() => setActiveSingleSelectPicker("duration")}
+          accessibilityRole="button"
+          accessibilityLabel="Select workshop duration"
+          accessibilityHint="Opens duration picker as a bottom sheet"
+          accessibilityState={{ expanded: activeSingleSelectPicker === "duration" }}
         >
           <Text
             style={[
@@ -448,22 +624,6 @@ export default function CreateWorkshopScreen({ navigation, route }) {
             {duration || "Select duration"}
           </Text>
         </Pressable>
-        {showDurationPicker && (
-          <View style={styles.dropdownList}>
-            {DURATION_OPTIONS.map((option) => (
-              <Pressable
-                key={option}
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setDuration(option);
-                  setShowDurationPicker(false);
-                }}
-              >
-                <Text style={styles.dropdownItemText}>{option}</Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
 
         <Text style={[styles.label, { marginTop: 20 }]}>
           Maximum Participants <Text style={styles.required}>*</Text>
@@ -475,6 +635,8 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           onChangeText={setMaxParticipants}
           keyboardType="numeric"
           placeholderTextColor="#999"
+          accessibilityLabel="Maximum participants"
+          accessibilityHint="Enter the maximum number of participants"
         />
       </View>
 
@@ -487,7 +649,11 @@ export default function CreateWorkshopScreen({ navigation, route }) {
         </Text>
         <Pressable
           style={styles.dropdownButton}
-          onPress={() => setShowWardPicker(!showWardPicker)}
+          onPress={() => setActiveSingleSelectPicker("ward")}
+          accessibilityRole="button"
+          accessibilityLabel="Select ward"
+          accessibilityHint="Opens ward picker as a bottom sheet"
+          accessibilityState={{ expanded: activeSingleSelectPicker === "ward" }}
         >
           <Text
             style={[
@@ -498,22 +664,6 @@ export default function CreateWorkshopScreen({ navigation, route }) {
             {selectedWard || "Select ward"}
           </Text>
         </Pressable>
-        {showWardPicker && (
-          <View style={styles.dropdownList}>
-            {KYOTO_WARDS.map((ward) => (
-              <Pressable
-                key={ward}
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setSelectedWard(ward);
-                  setShowWardPicker(false);
-                }}
-              >
-                <Text style={styles.dropdownItemText}>{ward}</Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
 
         <Text style={[styles.label, { marginTop: 20 }]}>
           Address <Text style={styles.required}>*</Text>
@@ -526,6 +676,8 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           placeholderTextColor="#999"
           multiline
           numberOfLines={2}
+          accessibilityLabel="Workshop address"
+          accessibilityHint="Enter street address and building details"
         />
       </View>
 
@@ -545,6 +697,8 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           multiline
           numberOfLines={6}
           textAlignVertical="top"
+          accessibilityLabel="Workshop description"
+          accessibilityHint="Describe what participants will learn and the workshop experience"
         />
         <Text style={styles.helperText}>
           ✍️ Write 3-5 paragraphs. Include skill level, what you'll teach, the
@@ -566,6 +720,8 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           multiline
           numberOfLines={5}
           textAlignVertical="top"
+          accessibilityLabel="Materials and services included"
+          accessibilityHint="Optional. List tools, materials, and services included"
         />
         <Text style={styles.helperText}>
           🎁 Be specific: "All pottery tools, 1kg of clay, glazing materials,
@@ -587,6 +743,8 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           onChangeText={setPrice}
           keyboardType="numeric"
           placeholderTextColor="#999"
+          accessibilityLabel="Price per person in Japanese yen"
+          accessibilityHint="Enter the workshop price in yen"
         />
       </View>
 
@@ -595,6 +753,10 @@ export default function CreateWorkshopScreen({ navigation, route }) {
         style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={submitting}
+        accessibilityRole="button"
+        accessibilityLabel={isEditMode ? "Submit workshop updates for review" : "Submit workshop for review"}
+        accessibilityHint="Saves your workshop and sends it for admin review"
+        accessibilityState={{ disabled: submitting, busy: submitting }}
       >
         {submitting ? (
           <ActivityIndicator color="#FFF" />
@@ -610,6 +772,72 @@ export default function CreateWorkshopScreen({ navigation, route }) {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+    <Modal
+      visible={Boolean(singleSelectPickerConfig)}
+      animationType="slide"
+      transparent
+      onRequestClose={closeSingleSelectPicker}
+    >
+      <View style={styles.selectionSheetBackdrop}>
+        <Pressable
+          style={styles.selectionSheetBackdropTap}
+          onPress={closeSingleSelectPicker}
+          accessibilityRole="button"
+          accessibilityLabel="Close picker"
+          accessibilityHint="Closes the selection sheet"
+        />
+
+        <View style={styles.selectionSheet} accessibilityViewIsModal>
+          <View style={styles.selectionSheetHandle} />
+
+          <View style={styles.selectionSheetHeader}>
+            <Text style={styles.selectionSheetTitle}>{singleSelectPickerConfig?.title}</Text>
+
+            <Pressable
+              onPress={closeSingleSelectPicker}
+              style={styles.selectionSheetClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close picker"
+            >
+              <XMarkIcon size={18} color="#333" />
+            </Pressable>
+          </View>
+
+          <ScrollView style={styles.selectionSheetScroll} contentContainerStyle={styles.selectionSheetScrollContent}>
+            {singleSelectPickerConfig?.options.map((option) => {
+              const isSelected = singleSelectPickerConfig.selectedValue === option;
+
+              return (
+                <Pressable
+                  key={option}
+                  style={[
+                    styles.selectionSheetOption,
+                    isSelected && styles.selectionSheetOptionSelected,
+                  ]}
+                  onPress={() => {
+                    singleSelectPickerConfig.onSelect(option);
+                    closeSingleSelectPicker();
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${singleSelectPickerConfig.title} option ${option}`}
+                  accessibilityState={{ selected: isSelected }}
+                >
+                  <Text
+                    style={[
+                      styles.selectionSheetOptionText,
+                      isSelected && styles.selectionSheetOptionTextSelected,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+    </>
   );
 }
 
@@ -672,6 +900,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     lineHeight: 18,
   },
+  errorText: {
+    fontSize: 13,
+    color: "#C1121F",
+    marginTop: 4,
+    lineHeight: 18,
+  },
   categoryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -685,6 +919,10 @@ const styles = StyleSheet.create({
     borderColor: "#E6E2DA",
     backgroundColor: "#FBFAF7",
   },
+  categoryChipDisabled: {
+    backgroundColor: "#F0EFEC",
+    borderColor: "#DDD8CF",
+  },
   categoryChipSelected: {
     backgroundColor: "#1F1F1F",
     borderColor: "#1F1F1F",
@@ -693,6 +931,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#1F1F1F",
     fontWeight: "600",
+  },
+  categoryChipTextDisabled: {
+    color: "#9A9488",
   },
   categoryChipTextSelected: {
     color: "#FFFFFF",
@@ -798,23 +1039,77 @@ const styles = StyleSheet.create({
   dropdownPlaceholder: {
     color: "#999",
   },
-  dropdownList: {
-    marginTop: 4,
+  selectionSheetBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "flex-end",
+  },
+  selectionSheetBackdropTap: {
+    flex: 1,
+  },
+  selectionSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === "ios" ? 28 : 20,
+    maxHeight: "70%",
+  },
+  selectionSheetHandle: {
+    alignSelf: "center",
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: "#DDD8CF",
+    marginBottom: 12,
+  },
+  selectionSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  selectionSheetTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F1F1F",
+  },
+  selectionSheetClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F5F1E8",
+  },
+  selectionSheetScroll: {
+    maxHeight: 420,
+  },
+  selectionSheetScrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  selectionSheetOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E6E2DA",
-    borderRadius: 12,
-    backgroundColor: "#FFFFFF",
-    overflow: "hidden",
+    backgroundColor: "#FBFAF7",
+    marginTop: 8,
   },
-  dropdownItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F5F1E8",
+  selectionSheetOptionSelected: {
+    backgroundColor: "#1F1F1F",
+    borderColor: "#1F1F1F",
   },
-  dropdownItemText: {
+  selectionSheetOptionText: {
     fontSize: 15,
     color: "#1F1F1F",
+    fontWeight: "600",
+  },
+  selectionSheetOptionTextSelected: {
+    color: "#FFFFFF",
   },
   submitButton: {
     backgroundColor: "#1F1F1F",

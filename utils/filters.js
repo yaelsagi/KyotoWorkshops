@@ -85,14 +85,17 @@ export function applyFilters({ workshops, favouritesSet, filters, query = "" }) 
   });
 }
 
-export function deriveFilterOptions(workshops) {
+// platformCategories: pass the full list from fetchPlatformCategories() so admin-approved
+// custom categories appear in the filter UI alongside the static defaults.
+export function deriveFilterOptions(workshops, platformCategories = WORKSHOP_CATEGORIES) {
   const workshopCategories = Array.from(
     new Set(workshops.map((workshop) => workshop.category).filter(Boolean))
   ).sort();
 
   const categories = Array.from(
-    new Set([...WORKSHOP_CATEGORIES, ...workshopCategories])
-  );
+    new Set([...platformCategories, ...workshopCategories])
+    // Always show category filters in A→Z order.
+  ).sort((a, b) => a.localeCompare(b));
 
   const normalizedWards = workshops
     .map((workshop) => normalizeWardName(workshop.ward))

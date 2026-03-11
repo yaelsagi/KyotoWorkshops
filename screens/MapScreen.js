@@ -37,11 +37,12 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { HeartIcon, XMarkIcon } from "react-native-heroicons/outline";
 
-import { fetchWorkshops, prefetchWorkshopImages } from "../services/workshopService";
+import { fetchWorkshops, prefetchWorkshopImages, fetchPlatformCategories } from "../services/workshopService";
 import WorkshopMapMarker from "../components/WorkshopMapMarker";
 import MapSearchBar from "../components/MapSearchBar";
 import FiltersSheet from "../components/FiltersSheet";
 import { ALL_OPTION } from "../constants/kyotoWards";
+import { WORKSHOP_CATEGORIES } from "../constants/workshopCategories";
 import { applyFilters, DEFAULT_FILTERS, deriveFilterOptions, normalizePriceRange } from "../utils/filters";
 import { useFavourites } from "../context/FavouritesContext";
 
@@ -84,6 +85,10 @@ export default function MapScreen({ navigation }) {
   // We bump this key ONLY on Apply to force a reliable redraw.
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
 
+  // Platform category list (static defaults + admin-approved custom categories).
+  // Initialised to static list so filters work immediately before the Firestore fetch completes.
+  const [platformCategories, setPlatformCategories] = useState(WORKSHOP_CATEGORIES);
+
   // Fetch workshops from Firebase on mount
   useEffect(() => {
     const loadWorkshops = async () => {
@@ -103,6 +108,11 @@ export default function MapScreen({ navigation }) {
       }
     };
     loadWorkshops();
+  }, []);
+
+  // Fetch platform categories (includes admin-approved custom ones) separately.
+  useEffect(() => {
+    fetchPlatformCategories().then(setPlatformCategories).catch(() => { /* keep static defaults */ });
   }, []);
 
   const showCard = useCallback(() => {
@@ -141,7 +151,8 @@ export default function MapScreen({ navigation }) {
     toggleFavourite(workshopId);
   }, [toggleFavourite]);
 
-  const filterOptions = useMemo(() => deriveFilterOptions(workshops), [workshops]);
+  // Pass platformCategories so admin-approved custom categories appear in the filter sheet.
+  const filterOptions = useMemo(() => deriveFilterOptions(workshops, platformCategories), [workshops, platformCategories]);
 
   const handleApplyFilters = useCallback((draft) => {
     const normalizedRange = normalizePriceRange(draft.minPrice, draft.maxPrice);

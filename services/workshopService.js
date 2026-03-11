@@ -20,6 +20,7 @@ import { Image } from 'expo-image';
 import { db, storage } from '../firebase/firebase';
 import { ALL_OPTION, KYOTO_WARDS } from '../constants/kyotoWards';
 import { normalizeWardName } from '../utils/normalizeWardName';
+import { WORKSHOP_CATEGORIES } from '../constants/workshopCategories';
 
 const KYOTO_DEFAULT_COORDINATES = {
   lat: 35.0116,
@@ -38,6 +39,42 @@ const CATEGORY_SUGGESTION_STATUS = {
   APPROVED: 'approved',
   REJECTED: 'rejected',
 };
+
+function normalizeCategoryLabel(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const sanitized = value
+    .replace(/[^A-Za-z0-9 ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!sanitized) {
+    return '';
+  }
+
+  return sanitized
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
+    .join(' ');
+}
+
+// Comparison-only key for duplicate checks.
+// Keeps display labels untouched (e.g. "Wood Carving") but treats variants like
+// "woodcarving", "wood-carving", and "wood carving" as the same key.
+function normalizeCategoryComparisonKey(value) {
+  const label = normalizeCategoryLabel(value);
+  if (!label) {
+    return '';
+  }
+
+  return label
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
 
 function normalizeWorkshopLocation(workshop) {
   if (!workshop || typeof workshop !== 'object') {
@@ -68,6 +105,8 @@ function normalizeWorkshopRecord(workshop) {
     return normalized;
   }
 
+  const normalizedCustomCategorySuggestion = normalizeCategoryLabel(normalized.customCategorySuggestion);
+
   const categories = Array.isArray(normalized.categories)
     ? normalized.categories.filter(Boolean)
     : (normalized.category ? [normalized.category] : []);
@@ -77,10 +116,10 @@ function normalizeWorkshopRecord(workshop) {
     categories,
     category: toWorkshopCategory({ ...normalized, categories }),
     status: normalized.status || WORKSHOP_STATUS.APPROVED,
-    customCategorySuggestion: normalized.customCategorySuggestion || null,
+    customCategorySuggestion: normalizedCustomCategorySuggestion || null,
     customCategorySuggestionStatus:
       normalized.customCategorySuggestionStatus ||
-      (normalized.customCategorySuggestion ? CATEGORY_SUGGESTION_STATUS.PENDING : CATEGORY_SUGGESTION_STATUS.NONE),
+      (normalizedCustomCategorySuggestion ? CATEGORY_SUGGESTION_STATUS.PENDING : CATEGORY_SUGGESTION_STATUS.NONE),
   };
 }
 
@@ -371,13 +410,15 @@ export async function createWorkshop(workshopData, ownerId) {
 
     const now = new Date().toISOString();
     const normalizedWard = normalizeWardName(workshopData.ward);
+    // Before admin review, the suggestion text is normalised for clean storage and review.
+    const normalizedCustomCategorySuggestion = normalizeCategoryLabel(workshopData.customCategorySuggestion);
     const normalizedWorkshopData = {
       ownerId,
       title: workshopData.title.trim(),
       categories: workshopData.categories,
       category: workshopData.categories[0],
-      customCategorySuggestion: workshopData.customCategorySuggestion || null,
-      customCategorySuggestionStatus: workshopData.customCategorySuggestion
+      customCategorySuggestion: normalizedCustomCategorySuggestion || null,
+      customCategorySuggestionStatus: normalizedCustomCategorySuggestion
         ? CATEGORY_SUGGESTION_STATUS.PENDING
         : CATEGORY_SUGGESTION_STATUS.NONE,
       ward: normalizedWard,
@@ -443,6 +484,8 @@ export async function updateWorkshop(workshopId, updates) {
     });
 
     const normalizedUpdates = normalizeWorkshopLocation(updates);
+  // Before admin review, the suggestion text is normalised for clean storage and review.
+    const normalizedCustomCategorySuggestion = normalizeCategoryLabel(normalizedUpdates.customCategorySuggestion);
 
     const incomingCover = normalizedUpdates.coverImageAsset || existingWorkshop.coverImage;
     let coverImage = existingWorkshop.coverImage || null;
@@ -488,8 +531,8 @@ export async function updateWorkshop(workshopId, updates) {
       category: Array.isArray(normalizedUpdates.categories) && normalizedUpdates.categories.length > 0
         ? normalizedUpdates.categories[0]
         : existingWorkshop.category,
-      customCategorySuggestion: normalizedUpdates.customCategorySuggestion || null,
-      customCategorySuggestionStatus: normalizedUpdates.customCategorySuggestion
+      customCategorySuggestion: normalizedCustomCategorySuggestion || null,
+      customCategorySuggestionStatus: normalizedCustomCategorySuggestion
         ? CATEGORY_SUGGESTION_STATUS.PENDING
         : CATEGORY_SUGGESTION_STATUS.NONE,
       ward: normalizeWardName(normalizedUpdates.ward),
@@ -604,13 +647,82 @@ export async function reviewWorkshopCategorySuggestion(workshopId, nextStatus) {
 
   try {
     const workshopDoc = doc(db, 'workshops', workshopId);
+
+    // Fetch the suggestion text before updating status
+    const workshopSnap = await getDoc(workshopDoc);
+    const suggestion = workshopSnap.exists() ? workshopSnap.data().customCategorySuggestion : null;
+    const normalizedSuggestion = normalizeCategoryLabel(suggestion);
+
+    // Mark the suggestion as approved/rejected on the workshop document.
+    // The workshop's own categories array is intentionally NOT changed —
+    // this is a platform-level category suggestion, not a self-assignment.
     await updateDoc(workshopDoc, {
       customCategorySuggestionStatus: nextStatus,
       updatedAt: new Date().toISOString(),
     });
+
+    // If approved and a suggestion text exists, add it to the platform category list.
+    if (nextStatus === CATEGORY_SUGGESTION_STATUS.APPROVED && normalizedSuggestion) {
+      const platformDoc = doc(db, 'platform', 'settings');
+      const platformSnap = await getDoc(platformDoc);
+      const existingCustomCategories = platformSnap.exists() ? (platformSnap.data().customCategories || []) : [];
+
+      // Before admin approval, duplicate-equivalence checks are applied to prevent
+      // near-duplicate categories from entering the shared category list.
+      // Build a comparison set from both default and approved custom categories.
+      // We compare by normalized keys so punctuation/spacing variants are treated as duplicates.
+      const existingComparisonKeys = new Set(
+        [...WORKSHOP_CATEGORIES, ...existingCustomCategories]
+          .map(normalizeCategoryComparisonKey)
+          .filter(Boolean),
+      );
+
+      if (!existingComparisonKeys.has(normalizeCategoryComparisonKey(normalizedSuggestion))) {
+        await setDoc(
+          platformDoc,
+          { customCategories: arrayUnion(normalizedSuggestion) },
+          { merge: true },
+        );
+      }
+    }
   } catch (error) {
     console.error('Error reviewing category suggestion:', error);
     throw new Error('Could not review category suggestion');
+  }
+}
+
+// Returns the full category list: static defaults merged with admin-approved custom categories.
+// Falls back to static list only if Firestore is unreachable.
+export async function fetchPlatformCategories() {
+  try {
+    const platformDoc = doc(db, 'platform', 'settings');
+    const snap = await getDoc(platformDoc);
+    const customCategories = snap.exists() ? (snap.data().customCategories || []) : [];
+
+    // Keyed map keeps one display label per normalized comparison key.
+    // This prevents duplicate variants while preserving a readable label for UI.
+    const mergedByKey = new Map();
+
+    [...WORKSHOP_CATEGORIES, ...customCategories].forEach((category) => {
+      const label = normalizeCategoryLabel(category);
+      const key = normalizeCategoryComparisonKey(label);
+      if (!label || !key || mergedByKey.has(key)) {
+        return;
+      }
+      mergedByKey.set(key, label);
+    });
+
+    // Merge default + approved categories and keep final list alphabetically sorted.
+    const merged = Array.from(mergedByKey.values())
+      .sort((a, b) => a.localeCompare(b));
+    return merged;
+  } catch (error) {
+    console.warn('Could not fetch platform categories, using defaults:', error.message);
+    return WORKSHOP_CATEGORIES
+      .map(normalizeCategoryLabel)
+      .filter(Boolean)
+      // Keep fallback list alphabetically ordered too.
+      .sort((a, b) => a.localeCompare(b));
   }
 }
 
