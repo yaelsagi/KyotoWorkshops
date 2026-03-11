@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { CameraIcon, HeartIcon } from "react-native-heroicons/outline";
@@ -140,45 +141,51 @@ export default function FavouritesScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.centerContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (favouriteWorkshops.length === 0) {
     return (
-      <View style={styles.centerContainer}>
-        <HeartIcon size={56} color="#DDD" style={styles.emptyIcon} />
-        <Text style={styles.emptyTitle}>No favourites yet</Text>
-        <Text style={styles.emptyText}>
-          Save workshops you're interested in by tapping the heart icon
-        </Text>
-        <Pressable 
-          style={styles.exploreButton}
-          onPress={() => navigation.navigate("Explore")}
-        >
-          <Text style={styles.exploreButtonText}>Explore Workshops</Text>
-        </Pressable>
-      </View>
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.centerContainer}>
+          <HeartIcon size={56} color="#DDD" style={styles.emptyIcon} />
+          <Text style={styles.emptyTitle}>No favourites yet</Text>
+          <Text style={styles.emptyText}>
+            Save workshops you're interested in by tapping the heart icon
+          </Text>
+          <Pressable 
+            style={styles.exploreButton}
+            onPress={() => navigation.navigate("Explore")}
+          >
+            <Text style={styles.exploreButtonText}>Explore Workshops</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Saved Workshops</Text>
-        <Text style={styles.headerCount}>{favouriteWorkshops.length} saved</Text>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Saved Workshops</Text>
+          <Text style={styles.headerCount}>{favouriteWorkshops.length} saved</Text>
+        </View>
+
+        <FlatList
+          data={favouriteWorkshops}
+          keyExtractor={item => item.id}
+          renderItem={renderWorkshop}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+        />
       </View>
-      
-      <FlatList
-        data={favouriteWorkshops}
-        keyExtractor={item => item.id}
-        renderItem={renderWorkshop}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -200,7 +207,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 18,
-    paddingTop: Platform.OS === "ios" ? 60 : 20,
+    paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,

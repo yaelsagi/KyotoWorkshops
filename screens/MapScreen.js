@@ -36,6 +36,7 @@ import MapView from "react-native-maps";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { HeartIcon, XMarkIcon } from "react-native-heroicons/outline";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { fetchWorkshops, prefetchWorkshopImages, fetchPlatformCategories } from "../services/workshopService";
 import WorkshopMapMarker from "../components/WorkshopMapMarker";
@@ -54,6 +55,8 @@ const KYOTO_REGION = {
 };
 
 export default function MapScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
+
   // Favourites from shared context (single source of truth)
   const { favourites, loadingFavourites, isFavourited, toggleFavourite } = useFavourites();
 
@@ -273,8 +276,8 @@ export default function MapScreen({ navigation }) {
         }}
       />
 
-      {activeFilterChips.length > 0 && (
-        <View style={styles.activeFiltersWrap}>
+      {(activeFilterChips.length > 0) && (
+        <View style={[styles.activeFiltersWrap, { top: insets.top + 72 }]} pointerEvents="box-none">
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -409,7 +412,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 12,
     right: 12,
-    top: Platform.OS === "ios" ? 120 : 78,
     zIndex: 40,
     elevation: 40,
   },

@@ -13,6 +13,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { signUpWithEmail } from '../services/authService';
+import { getPasswordValidationError, PASSWORD_REQUIREMENTS_TEXT } from '../utils/passwordValidation';
 
 export default function SignUpScreen({ navigation, route }) {
   const [displayName, setDisplayName] = useState('');
@@ -33,8 +34,9 @@ export default function SignUpScreen({ navigation, route }) {
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Weak Password', 'Password must be at least 6 characters');
+    const passwordError = getPasswordValidationError(password);
+    if (passwordError) {
+      Alert.alert('Invalid Password', passwordError);
       return;
     }
 
@@ -104,7 +106,7 @@ export default function SignUpScreen({ navigation, route }) {
 
           <TextInput
             style={styles.input}
-            placeholder="Password (min 6 characters) *"
+            placeholder="Password *"
             placeholderTextColor="#999"
             value={password}
             onChangeText={setPassword}
@@ -113,6 +115,7 @@ export default function SignUpScreen({ navigation, route }) {
             autoComplete="password-new"
             editable={!loading}
           />
+          <Text style={styles.helperText}>{PASSWORD_REQUIREMENTS_TEXT}</Text>
 
           <TextInput
             style={styles.input}
@@ -185,9 +188,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     fontSize: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#e9ecef',
+  },
+  helperText: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: -2,
+    marginBottom: 16,
+    lineHeight: 18,
   },
   button: {
     backgroundColor: '#2ecc71',

@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { CalendarDaysIcon, CameraIcon, LockClosedIcon } from "react-native-heroicons/outline";
@@ -139,64 +140,72 @@ export default function BookingsScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.centerContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   // Guest mode - require authentication
   if (!authUser) {
     return (
-      <View style={styles.centerContainer}>
-        <LockClosedIcon size={56} color="#DDD" style={styles.emptyIcon} />
-        <Text style={styles.emptyTitle}>Sign in required</Text>
-        <Text style={styles.emptyText}>
-          Sign in to view and manage your workshop bookings
-        </Text>
-        <Pressable 
-          style={styles.exploreButton}
-          onPress={() => navigation.navigate("Login")}
-        >
-          <Text style={styles.exploreButtonText}>Sign In</Text>
-        </Pressable>
-      </View>
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.centerContainer}>
+          <LockClosedIcon size={56} color="#DDD" style={styles.emptyIcon} />
+          <Text style={styles.emptyTitle}>Sign in required</Text>
+          <Text style={styles.emptyText}>
+            Sign in to view and manage your workshop bookings
+          </Text>
+          <Pressable 
+            style={styles.exploreButton}
+            onPress={() => navigation.navigate("Login")}
+          >
+            <Text style={styles.exploreButtonText}>Sign In</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (bookings.length === 0) {
     return (
-      <View style={styles.centerContainer}>
-        <CalendarDaysIcon size={56} color="#DDD" style={styles.emptyIcon} />
-        <Text style={styles.emptyTitle}>No bookings yet</Text>
-        <Text style={styles.emptyText}>
-          When you book a workshop, it will appear here
-        </Text>
-        <Pressable 
-          style={styles.exploreButton}
-          onPress={() => navigation.navigate("Explore")}
-        >
-          <Text style={styles.exploreButtonText}>Find Workshops</Text>
-        </Pressable>
-      </View>
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.centerContainer}>
+          <CalendarDaysIcon size={56} color="#DDD" style={styles.emptyIcon} />
+          <Text style={styles.emptyTitle}>No bookings yet</Text>
+          <Text style={styles.emptyText}>
+            When you book a workshop, it will appear here
+          </Text>
+          <Pressable 
+            style={styles.exploreButton}
+            onPress={() => navigation.navigate("Explore")}
+          >
+            <Text style={styles.exploreButtonText}>Find Workshops</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Bookings</Text>
-        <Text style={styles.headerCount}>{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</Text>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>My Bookings</Text>
+          <Text style={styles.headerCount}>{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</Text>
+        </View>
+
+        <FlatList
+          data={bookings}
+          keyExtractor={(item, index) => `${item.id}-${item.bookedAt}-${index}`}
+          renderItem={renderBooking}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+        />
       </View>
-      
-      <FlatList
-        data={bookings}
-        keyExtractor={(item, index) => `${item.id}-${item.bookedAt}-${index}`}
-        renderItem={renderBooking}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -218,7 +227,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 18,
-    paddingTop: Platform.OS === "ios" ? 60 : 20,
+    paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,

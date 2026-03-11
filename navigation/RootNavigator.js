@@ -12,6 +12,9 @@ import MyWorkshopsScreen from "../screens/MyWorkshopsScreen";
 import TranslatorSetupScreen from "../screens/TranslatorSetupScreen";
 import CreateWorkshopScreen from "../screens/CreateWorkshopScreen";
 import AdminReviewScreen from "../screens/AdminReviewScreen";
+import ChangePasswordScreen from "../screens/ChangePasswordScreen";
+import EditProfileScreen from "../screens/EditProfileScreen";
+import DeleteAccountScreen from "../screens/DeleteAccountScreen";
 
 const RootStack = createNativeStackNavigator();
 
@@ -82,6 +85,33 @@ export default function RootNavigator() {
         component={AdminReviewScreen}
         options={{
           title: "Admin Review",
+          headerBackTitleVisible: false,
+        }}
+      />
+
+      <RootStack.Screen
+        name="ChangePassword"
+        component={ChangePasswordScreen}
+        options={{
+          title: "Change Password",
+          headerBackTitleVisible: false,
+        }}
+      />
+
+      <RootStack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{
+          title: "Edit Profile",
+          headerBackTitleVisible: false,
+        }}
+      />
+
+      <RootStack.Screen
+        name="DeleteAccount"
+        component={DeleteAccountScreen}
+        options={{
+          title: "Delete Account",
           headerBackTitleVisible: false,
         }}
       />

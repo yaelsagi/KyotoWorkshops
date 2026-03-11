@@ -13,6 +13,7 @@ import {
   Image,
   ActivityIndicator
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from 'expo-image-picker';
 import { 
   UserCircleIcon, 
@@ -30,8 +31,8 @@ import { useUserCapabilities } from "../context/UserCapabilitiesContext";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
 import { useFavourites } from "../context/FavouritesContext";
-import { signOutUser, deleteUserAccount } from "../services/authService";
-import { uploadUserProfilePhoto, deleteUserProfilePhoto, deleteUserPhotoFolder } from "../services/storageService";
+import { signOutUser } from "../services/authService";
+import { uploadUserProfilePhoto, deleteUserProfilePhoto } from "../services/storageService";
 import { updateUserPhotoURL } from "../services/userService";
 
 export default function ProfileScreen({ navigation }) {
@@ -282,55 +283,10 @@ export default function ProfileScreen({ navigation }) {
     );
   };
 
-  /**
-   * Delete the user's account completely
-   * This removes: user document in Firestore, all profile photos from Storage, Firebase Auth account
-   */
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete your account?',
-      'All account data will be permanently removed.\nThis action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setUploadingPhoto(true);
-            try {
-              if (!currentUser?.uid) {
-                throw new Error('User ID not found');
-              }
-
-              // Delete all profile photos from Firebase Storage
-              try {
-                await deleteUserPhotoFolder(currentUser.uid);
-                console.log('User photos deleted from Storage');
-              } catch (error) {
-                console.warn('Could not delete user photos:', error);
-                // Continue anyway - Firestore and Auth deletion are more important
-              }
-
-              // Delete user account from Firebase Auth and Firestore
-              await deleteUserAccount(currentUser.uid);
-              console.log('User account deleted');
-
-              // After successful deletion, the user will be signed out automatically
-              // AuthContext will detect auth state change and redirect to login
-              Alert.alert('Account Deleted', 'Your account has been permanently deleted');
-            } catch (error) {
-              console.error('Error deleting account:', error);
-              Alert.alert('Error', error.message || 'Could not delete account. Please try again.');
-              setUploadingPhoto(false);
-            }
-          }
-        }
-      ]
-    );
-  };
   if (!authUser) {
     return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Guest Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
@@ -406,15 +362,6 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.menuArrow}>›</Text>
           </Pressable>
 
-          <Pressable
-            style={styles.menuItem}
-            onPress={() => navigation.navigate("AdminReview")}
-          >
-            <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Admin Review (Demo)</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </Pressable>
-
           <Pressable 
             style={styles.menuItem}
             onPress={() => Alert.alert("Privacy Policy", "View our privacy policy at kyotoworkshops.com/privacy")}
@@ -431,14 +378,29 @@ export default function ProfileScreen({ navigation }) {
           </Pressable>
         </View>
 
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Developer / Demo</Text>
+
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("AdminReview")}
+          >
+            <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
+            <Text style={styles.menuText}>Admin Review</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </Pressable>
+        </View>
+
         <Text style={styles.version}>Version 1.0.0</Text>
-      </ScrollView>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   // Authenticated mode - user is signed in
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Profile Header */}
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
@@ -533,7 +495,7 @@ export default function ProfileScreen({ navigation }) {
         
         <Pressable 
           style={styles.menuItem}
-          onPress={() => Alert.alert("Coming Soon", "This feature is not yet available")}
+          onPress={() => navigation.navigate("EditProfile")}
         >
           <PencilIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
           <Text style={styles.menuText}>Edit Profile</Text>
@@ -542,7 +504,7 @@ export default function ProfileScreen({ navigation }) {
 
         <Pressable 
           style={styles.menuItem}
-          onPress={() => Alert.alert("Coming Soon", "This feature is not yet available")}
+          onPress={() => navigation.navigate("ChangePassword")}
         >
           <LockClosedIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
           <Text style={styles.menuText}>Change Password</Text>
@@ -557,7 +519,7 @@ export default function ProfileScreen({ navigation }) {
 
         <Pressable 
           style={[styles.menuItem, styles.menuItemDanger]}
-          onPress={handleDeleteAccount}
+          onPress={() => navigation.navigate("DeleteAccount")}
         >
           <ExclamationTriangleIcon size={24} color="#C1121F" style={styles.menuIcon} />
           <Text style={[styles.menuText, styles.menuTextDanger]}>Delete Account</Text>
@@ -578,15 +540,6 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.menuArrow}>›</Text>
         </Pressable>
 
-        <Pressable
-          style={styles.menuItem}
-          onPress={() => navigation.navigate("AdminReview")}
-        >
-          <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-          <Text style={styles.menuText}>Admin Review (Demo)</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </Pressable>
-
         <Pressable 
           style={styles.menuItem}
           onPress={() => Alert.alert("Privacy Policy", "View our privacy policy at kyotoworkshops.com/privacy")}
@@ -603,6 +556,19 @@ export default function ProfileScreen({ navigation }) {
         </Pressable>
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Developer / Demo</Text>
+
+        <Pressable
+          style={styles.menuItem}
+          onPress={() => navigation.navigate("AdminReview")}
+        >
+          <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
+          <Text style={styles.menuText}>Admin Review</Text>
+          <Text style={styles.menuArrow}>›</Text>
+        </Pressable>
+      </View>
+
       {/* Logout Button */}
       <Pressable 
         style={styles.logoutButton}
@@ -612,7 +578,8 @@ export default function ProfileScreen({ navigation }) {
       </Pressable>
 
       <Text style={styles.version}>Version 1.0.0</Text>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -626,7 +593,7 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: "center",
-    paddingTop: Platform.OS === "ios" ? 70 : 30,
+    paddingTop: 24,
     paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#E6E2DA",

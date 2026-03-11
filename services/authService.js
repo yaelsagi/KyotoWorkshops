@@ -6,10 +6,14 @@ import {
   signInWithEmailAndPassword, 
   signOut,
   updateProfile,
-  deleteUser
+  deleteUser,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from 'firebase/auth';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebase';
+import { getPasswordValidationError } from '../utils/passwordValidation';
 
 /**
  * Create a new user account with email, password, and display name
@@ -25,8 +29,9 @@ export async function signUpWithEmail(email, password, displayName) {
     throw new Error('Display name is required');
   }
 
-  if (password.length < 6) {
-    throw new Error('Password must be at least 6 characters');
+  const passwordError = getPasswordValidationError(password);
+  if (passwordError) {
+    throw new Error(passwordError);
   }
 
   try {
@@ -66,6 +71,116 @@ export async function signUpWithEmail(email, password, displayName) {
     
     throw new Error('Could not create account. Please try again.');
   }
+}
+
+// Change current user password
+export async function changeCurrentUserPassword(currentPassword, newPassword) {
+  if (!currentPassword || !newPassword) {
+    throw new Error('Current password and new password are required');
+  }
+
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    throw new Error('You must be signed in to change your password');
+  }
+
+  if (!currentUser.email) {
+    throw new Error('Your account email is unavailable');
+  }
+
+  const passwordError = getPasswordValidationError(newPassword);
+  if (passwordError) {
+    throw new Error(passwordError);
+  }
+
+  if (currentPassword === newPassword) {
+    throw new Error('New password must be different from your current password.');
+  }
+
+  try {
+    const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+    await reauthenticateWithCredential(currentUser, credential);
+    await updatePassword(currentUser, newPassword);
+    return true;
+  } catch (error) {
+    console.error('Password change failed:', error);
+
+    if (
+      error.code === 'auth/wrong-password' ||
+      error.code === 'auth/invalid-credential' ||
+      error.code === 'auth/invalid-login-credentials'
+    ) {
+      throw new Error('Current password is incorrect');
+    }
+
+    if (error.code === 'auth/weak-password') {
+      throw new Error('New password is too weak');
+    }
+
+    if (error.code === 'auth/requires-recent-login') {
+      throw new Error('Please sign out and sign in again before changing your password');
+    }
+
+    throw new Error(error.message || 'Could not change password. Please try again.');
+  }
+}
+
+// Update current user display name in Firebase Auth
+export async function updateCurrentUserDisplayName(nextDisplayName) {
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    throw new Error('You must be signed in to update your profile');
+  }
+
+  const cleanedName = String(nextDisplayName || '').trim();
+
+  if (!cleanedName) {
+    throw new Error('Display name is required');
+  }
+
+  await updateProfile(currentUser, { displayName: cleanedName });
+  return cleanedName;
+}
+
+// Re-authenticate current user with password
+export async function reauthenticateCurrentUser(password) {
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    throw new Error('You must be signed in to continue');
+  }
+
+  if (!currentUser.email) {
+    throw new Error('Your account email is unavailable');
+  }
+
+  if (!password) {
+    throw new Error('Current password is required');
+  }
+
+  try {
+    const credential = EmailAuthProvider.credential(currentUser.email, password);
+    await reauthenticateWithCredential(currentUser, credential);
+    return true;
+  } catch (error) {
+    if (
+      error.code === 'auth/wrong-password' ||
+      error.code === 'auth/invalid-credential' ||
+      error.code === 'auth/invalid-login-credentials'
+    ) {
+      throw new Error('Current password is incorrect');
+    }
+
+    throw new Error(error.message || 'Could not verify your password. Please try again.');
+  }
+}
+
+// Delete account after explicit password verification
+export async function deleteUserAccountWithPassword(userId, currentPassword) {
+  await reauthenticateCurrentUser(currentPassword);
+  return deleteUserAccount(userId);
 }
 
 // Sign in existing user

@@ -19,7 +19,6 @@ import {
   PhotoIcon,
   InformationCircleIcon,
 } from "react-native-heroicons/outline";
-// Haptic feedback
 import * as Haptics from "expo-haptics";
 import { useUser } from "../context/UserContext";
 import { WORKSHOP_CATEGORIES } from "../constants/workshopCategories";
@@ -30,6 +29,7 @@ import {
   updateWorkshop,
 } from "../services/workshopService";
 
+// workshop duration options
 const DURATION_OPTIONS = [
   "1 hour",
   "1.5 hours",
@@ -46,6 +46,7 @@ const MAX_CATEGORIES = 3;
 const MIN_GALLERY_IMAGES = 3;
 const MAX_GALLERY_IMAGES = 10;
 
+// Patterns for form validation
 const TITLE_PATTERN = /^[A-Za-z0-9 ]+$/;
 const TITLE_INVALID_CHARS_PATTERN = /[^A-Za-z0-9 ]/g;
 const CATEGORY_SUGGESTION_INVALID_CHARS_PATTERN = /[^A-Za-z0-9 ]/g;
@@ -61,6 +62,7 @@ export default function CreateWorkshopScreen({ navigation, route }) {
 
   // Workshop Details
   const [title, setTitle] = useState(editingWorkshop?.title || "");
+  const [titleHasInvalidChars, setTitleHasInvalidChars] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState(
     Array.isArray(editingWorkshop?.categories) && editingWorkshop.categories.length > 0
       ? editingWorkshop.categories
@@ -118,12 +120,17 @@ export default function CreateWorkshopScreen({ navigation, route }) {
     return () => { cancelled = true; };
   }, []);
 
-  const isTitleInvalid = title.trim().length > 0 && !TITLE_PATTERN.test(title.trim());
-
-  // Remove invalid title characters while typing
+  // Detect invalid title characters while typing
   const handleTitleChange = (text) => {
     const sanitizedTitle = text.replace(TITLE_INVALID_CHARS_PATTERN, "");
+    setTitleHasInvalidChars(sanitizedTitle !== text);
     setTitle(sanitizedTitle);
+  };
+
+  // Remove dots from price input while typing
+  const handlePriceChange = (text) => {
+    const sanitizedPrice = text.replace(/[^0-9]/g, "");
+    setPrice(sanitizedPrice);
   };
 
   // Format category suggestion before saving
@@ -263,22 +270,20 @@ export default function CreateWorkshopScreen({ navigation, route }) {
     setGalleryImages(galleryImages.filter((_, i) => i !== index));
   };
 
-  // Success haptic
+  // Success haptic with strong feedback
   const triggerSubmitSuccessHaptic = async () => {
     try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     } catch (error) {
-      // Haptic fallback
       console.log("Haptics unavailable (success):", error?.message || error);
     }
   };
 
-  // Error haptic
+  // Error haptic with strong feedback
   const triggerSubmitErrorHaptic = async () => {
     try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     } catch (error) {
-      // Haptic fallback
       console.log("Haptics unavailable (error):", error?.message || error);
     }
   };
@@ -450,9 +455,9 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           accessibilityHint="Enter letters and numbers only. Symbols are not allowed."
         />
         <Text style={styles.helperText}>Use letters and numbers only. Symbols are not allowed.</Text>
-        {isTitleInvalid ? (
+        {titleHasInvalidChars ? (
           <Text style={styles.errorText} accessibilityLiveRegion="polite">
-            Title cannot contain symbols.
+            Symbols are not allowed in workshop title.
           </Text>
         ) : null}
 
@@ -740,11 +745,11 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           style={styles.input}
           placeholder="e.g., 12000"
           value={price}
-          onChangeText={setPrice}
+          onChangeText={handlePriceChange}
           keyboardType="numeric"
           placeholderTextColor="#999"
           accessibilityLabel="Price per person in Japanese yen"
-          accessibilityHint="Enter the workshop price in yen"
+          accessibilityHint="Enter the workshop price in yen (numbers only, no dots)"
         />
       </View>
 

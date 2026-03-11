@@ -2,6 +2,7 @@
 import React from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, Platform } from "react-native";
 import { MagnifyingGlassIcon, XMarkIcon } from "react-native-heroicons/outline";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function MapSearchBar({
   value,
@@ -9,8 +10,10 @@ export default function MapSearchBar({
   onPressFilters,
   placeholder = "Search workshops (title, category, ward)…",
 }) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.container} pointerEvents="box-none">
+    <View style={[styles.container, { top: insets.top + 12 }]} pointerEvents="box-none">
       <View style={styles.bar}>
         <MagnifyingGlassIcon size={18} color="#444" style={styles.icon} accessibilityElementsHidden />
 
@@ -58,7 +61,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 12,
     right: 12,
-    top: Platform.OS === "ios" ? 60 : 18,
 
     // ///---///
     // Ensures the search bar is ABOVE MapView
