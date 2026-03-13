@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,26 +10,126 @@ import {
   Platform,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { useAuth } from "../context/AuthContext";
+import { useUser } from "../context/UserContext";
 import {
   fetchPendingWorkshopsForReview,
   reviewWorkshop,
   reviewWorkshopCategorySuggestion,
 } from "../services/workshopService";
+import {
+  fetchPendingTranslatorApplications,
+  reviewTranslatorApplication,
+} from "../services/translatorService";
 
-export default function AdminReviewScreen() {
+export default function AdminReviewScreen({ navigation }) {
+  const { user: authUser } = useAuth();
+  const { currentUser, loading: userLoading } = useUser();
+  const guardPromptedRef = useRef(false);
+  const isAdmin = currentUser?.roles?.admin === true;
+  // Track review queue state
   const [loading, setLoading] = useState(true);
   const [pendingWorkshops, setPendingWorkshops] = useState([]);
+  const [pendingTranslatorApplications, setPendingTranslatorApplications] = useState([]);
+  const [reviewingByKey, setReviewingByKey] = useState({});
 
+  // Gate admin review access
+  useEffect(() => {
+    if (authUser && userLoading) {
+      return;
+    }
+
+    if (authUser && isAdmin) {
+      guardPromptedRef.current = false;
+      return;
+    }
+
+    if (guardPromptedRef.current) {
+      return;
+    }
+
+    guardPromptedRef.current = true;
+
+    if (!authUser) {
+      Alert.alert(
+        "Admin Access",
+        "Please sign in for admin access.",
+        [
+          {
+            text: "Sign In",
+            onPress: () => navigation.replace("Login", { redirectTo: "AdminReview" }),
+          },
+          {
+            text: "Create Account",
+            onPress: () => navigation.replace("SignUp", { redirectTo: "AdminReview" }),
+          },
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.replace("Tabs");
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    Alert.alert(
+      "Admin Access",
+      "Admin access is restricted to admin accounts.",
+      [
+        {
+          text: "OK",
+          onPress: () => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.replace("Tabs");
+            }
+          },
+        },
+      ]
+    );
+  }, [authUser, isAdmin, navigation, userLoading]);
+
+  // Load admin queues
   const loadData = useCallback(async () => {
+    if (!authUser || userLoading || !isAdmin) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const workshops = await fetchPendingWorkshopsForReview();
+      const [workshops, applications] = await Promise.all([
+        fetchPendingWorkshopsForReview(),
+        fetchPendingTranslatorApplications(),
+      ]);
       setPendingWorkshops(workshops);
+      setPendingTranslatorApplications(applications);
     } catch (error) {
       Alert.alert("Error", error.message || "Could not load review queues");
     } finally {
       setLoading(false);
     }
+  }, [authUser, isAdmin, userLoading]);
+
+  // Track in-flight review actions
+  const setReviewing = useCallback((key, isReviewing) => {
+    setReviewingByKey((prev) => {
+      if (isReviewing) {
+        return { ...prev, [key]: true };
+      }
+
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }, []);
 
   useFocusEffect(
@@ -38,16 +138,32 @@ export default function AdminReviewScreen() {
     }, [loadData])
   );
 
+  // Submit workshop review
   const handleReviewWorkshop = async (workshopId, approved) => {
+    const reviewKey = `workshop:${workshopId}`;
+    if (reviewingByKey[reviewKey]) {
+      return;
+    }
+
+    setReviewing(reviewKey, true);
     try {
       await reviewWorkshop(workshopId, approved ? "approved" : "rejected");
       setPendingWorkshops((prev) => prev.filter((workshop) => workshop.id !== workshopId));
     } catch (error) {
       Alert.alert("Error", error.message || "Could not review workshop");
+    } finally {
+      setReviewing(reviewKey, false);
     }
   };
 
+  // Submit category suggestion review
   const handleReviewCategorySuggestion = async (workshopId, approved) => {
+    const reviewKey = `category:${workshopId}`;
+    if (reviewingByKey[reviewKey]) {
+      return;
+    }
+
+    setReviewing(reviewKey, true);
     try {
       await reviewWorkshopCategorySuggestion(workshopId, approved ? "approved" : "rejected");
       setPendingWorkshops((prev) =>
@@ -62,15 +178,39 @@ export default function AdminReviewScreen() {
       );
     } catch (error) {
       Alert.alert("Error", error.message || "Could not review category suggestion");
+    } finally {
+      setReviewing(reviewKey, false);
     }
   };
 
-  if (loading) {
+  // Submit translator application review
+  const handleReviewTranslatorApplication = async (userId, approved) => {
+    const reviewKey = `translator:${userId}`;
+    if (reviewingByKey[reviewKey]) {
+      return;
+    }
+
+    setReviewing(reviewKey, true);
+    try {
+      await reviewTranslatorApplication(userId, approved);
+      setPendingTranslatorApplications((prev) => prev.filter((item) => item.id !== userId));
+    } catch (error) {
+      Alert.alert("Error", error.message || "Could not review translator application");
+    } finally {
+      setReviewing(reviewKey, false);
+    }
+  };
+
+  if (userLoading || loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#1F1F1F" />
       </View>
     );
+  }
+
+  if (!authUser || !isAdmin) {
+    return <View style={styles.loadingContainer} />;
   }
 
   return (
@@ -97,18 +237,27 @@ export default function AdminReviewScreen() {
               <Text style={styles.cardMeta}>Ward: {workshop.ward}</Text>
 
               <View style={styles.buttonRow}>
+                {(() => {
+                  const workshopReviewKey = `workshop:${workshop.id}`;
+                  return (
+                    <>
                 <Pressable
-                  style={[styles.button, styles.approveButton]}
+                  style={[styles.button, styles.approveButton, reviewingByKey[workshopReviewKey] && styles.buttonDisabled]}
                   onPress={() => handleReviewWorkshop(workshop.id, true)}
+                  disabled={Boolean(reviewingByKey[workshopReviewKey])}
                 >
                   <Text style={styles.buttonText}>Approve</Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.button, styles.rejectButton]}
+                  style={[styles.button, styles.rejectButton, reviewingByKey[workshopReviewKey] && styles.buttonDisabled]}
                   onPress={() => handleReviewWorkshop(workshop.id, false)}
+                  disabled={Boolean(reviewingByKey[workshopReviewKey])}
                 >
                   <Text style={styles.buttonText}>Reject</Text>
                 </Pressable>
+                    </>
+                  );
+                })()}
               </View>
 
               {workshop.customCategorySuggestion &&
@@ -117,18 +266,27 @@ export default function AdminReviewScreen() {
                   <Text style={styles.suggestionTitle}>Custom category suggestion</Text>
                   <Text style={styles.suggestionText}>{workshop.customCategorySuggestion}</Text>
                   <View style={styles.buttonRow}>
+                    {(() => {
+                      const categoryReviewKey = `category:${workshop.id}`;
+                      return (
+                        <>
                     <Pressable
-                      style={[styles.button, styles.approveButton]}
+                      style={[styles.button, styles.approveButton, reviewingByKey[categoryReviewKey] && styles.buttonDisabled]}
                       onPress={() => handleReviewCategorySuggestion(workshop.id, true)}
+                      disabled={Boolean(reviewingByKey[categoryReviewKey])}
                     >
                       <Text style={styles.buttonText}>Approve Suggestion</Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.button, styles.rejectButton]}
+                      style={[styles.button, styles.rejectButton, reviewingByKey[categoryReviewKey] && styles.buttonDisabled]}
                       onPress={() => handleReviewCategorySuggestion(workshop.id, false)}
+                      disabled={Boolean(reviewingByKey[categoryReviewKey])}
                     >
                       <Text style={styles.buttonText}>Reject Suggestion</Text>
                     </Pressable>
+                        </>
+                      );
+                    })()}
                   </View>
                 </>
               ) : null}
@@ -138,11 +296,60 @@ export default function AdminReviewScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pending Translator Applications</Text>
-        <Text style={styles.emptyText}>No pending translator applications yet.</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Pending Translator Applications</Text>
+          <Text style={styles.sectionCount}>{pendingTranslatorApplications.length}</Text>
+        </View>
+
+        {pendingTranslatorApplications.length === 0 ? (
+          <Text style={styles.emptyText}>No pending translator applications.</Text>
+        ) : (
+          pendingTranslatorApplications.map((user) => {
+            const application = user.translatorApplication || {};
+            return (
+              <View key={user.id} style={styles.card}>
+                <Text style={styles.cardTitle}>{user.displayName || "Unknown user"}</Text>
+                <Text style={styles.cardMeta}>Email: {user.email}</Text>
+                <Text style={styles.cardMeta}>Status: {application.status}</Text>
+                <Text style={styles.cardMeta}>Japanese: {application.japaneseLevel || "Not set"}</Text>
+                <Text style={styles.cardMeta}>
+                  Languages: {(application.targetLanguages || []).join(", ") || "None"}
+                </Text>
+                <Text style={styles.cardMeta}>
+                  Wards: {(application.wardsAvailable || []).join(", ") || "None"}
+                </Text>
+                <Text style={styles.cardMeta}>Interview: {application.interviewAt || "Not selected"}</Text>
+
+                <View style={styles.buttonRow}>
+                  {(() => {
+                    const translatorReviewKey = `translator:${user.id}`;
+                    return (
+                      <>
+                  <Pressable
+                    style={[styles.button, styles.approveButton, reviewingByKey[translatorReviewKey] && styles.buttonDisabled]}
+                    onPress={() => handleReviewTranslatorApplication(user.id, true)}
+                    disabled={Boolean(reviewingByKey[translatorReviewKey])}
+                  >
+                    <Text style={styles.buttonText}>Approve</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.button, styles.rejectButton, reviewingByKey[translatorReviewKey] && styles.buttonDisabled]}
+                    onPress={() => handleReviewTranslatorApplication(user.id, false)}
+                    disabled={Boolean(reviewingByKey[translatorReviewKey])}
+                  >
+                    <Text style={styles.buttonText}>Reject</Text>
+                  </Pressable>
+                      </>
+                    );
+                  })()}
+                </View>
+              </View>
+            );
+          })
+        )}
       </View>
 
-      <Pressable style={styles.refreshButton} onPress={loadData}>
+      <Pressable style={styles.refreshButton} onPress={loadData} disabled={Object.keys(reviewingByKey).length > 0}>
         <Text style={styles.refreshText}>Refresh Queues</Text>
       </Pressable>
     </ScrollView>
@@ -240,6 +447,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: "center",
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   approveButton: {
     backgroundColor: "#1F1F1F",

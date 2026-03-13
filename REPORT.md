@@ -428,6 +428,39 @@ test('submitReview rejects rating outside 1-5 range', async () => {
 - ✅ Firebase integration fully mocked (no real API calls in tests)
 - ✅ AsyncStorage caching verified in error scenarios
 - ✅ Data persistence workflows tested end-to-end
+
+### Defensive Programming Enhancements
+
+The project includes explicit defensive techniques to prevent crashes, unauthorized access, and duplicate writes:
+
+1. **Auth persistence hardening (React Native)**
+  - Firebase Auth initialization was updated to use AsyncStorage persistence on native devices.
+  - This avoids in-memory-only sessions and prevents unexpected sign-out after app restart.
+
+2. **Role-based admin access control (defense in depth)**
+  - Admin Review entry from Profile is gated by both authentication and `roles.admin === true`.
+  - A second guard exists inside AdminReviewScreen to block direct navigation attempts by guests/non-admin users.
+  - Guests receive actionable prompts (Sign In / Create Account) with redirect back to Admin Review after auth.
+
+3. **Duplicate-action prevention in admin review**
+  - Approve/Reject actions use in-flight state keys per item to block rapid double taps.
+  - Buttons are disabled while requests are in progress to reduce duplicate writes and race conditions.
+
+4. **Index-safe Firestore querying**
+  - Pending translator queue query was refactored to avoid composite-index failure at runtime.
+  - Sorting is performed safely in app code by submitted timestamp when needed.
+
+5. **Permission-safe category loading fallback**
+  - Category loading now falls back to static defaults when platform settings cannot be read.
+  - Permission-denied paths are handled gracefully so the app remains usable for guests.
+
+6. **Schema defaults for safer role handling**
+  - User role defaults now explicitly include `admin: false` on account creation and context fallback paths.
+  - This prevents undefined-role behavior and keeps access checks deterministic.
+
+7. **Consistent validation and fail-fast checks**
+  - Booking, workshop, review, and translator flows enforce required-field checks before writes.
+  - Service-layer guards return clear user-facing errors instead of allowing silent bad data.
 - ⏳ Component integration tests (post-feature completion)
 - ⏳ E2E tests with real Firebase (staging environment)
 

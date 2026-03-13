@@ -1,7 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { getAuth } from 'firebase/auth';
+import { getAuth, getReactNativePersistence, initializeAuth } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyB3wsqgKeAvjUCpoS73U6aTV1arKj98uuo',
@@ -16,7 +18,21 @@ const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-export const auth = getAuth(app);
+
+// Persist auth state on native so sessions survive app restarts
+export const auth = (() => {
+  if (Platform.OS === 'web') {
+    return getAuth(app);
+  }
+
+  try {
+    return initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch {
+    return getAuth(app);
+  }
+})();
 
 // Backward-compatible alias for existing imports while migrating files.
 export const database = db;

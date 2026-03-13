@@ -37,6 +37,8 @@ import { CameraIcon, HeartIcon, StarIcon } from "react-native-heroicons/outline"
 
 import { fetchReviewsForWorkshop } from "../services/reviewService";
 import { createBooking } from "../services/bookingService";
+import { SUPPORTED_LANGUAGES } from "../constants/supportedLanguages";
+import { fetchApprovedTranslators, matchTranslators } from "../services/translatorService";
 import {
   getWorkshopImageUrl,
   getAllWorkshopImages,
@@ -161,14 +163,16 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
       return;
     }
 
-    const saveBooking = async (translatorRequested, translatorLanguage = null) => {
+    // Save booking with optional translator details
+    const saveBooking = async (translatorRequested, requestedLanguage = null, translatorId = null) => {
       try {
         const bookingData = {
           workshopId: workshop.id,
           userId: currentUser.id,
           status: "pending",
-          translator: translatorRequested ? "Yes" : "No",
-          translatorLanguage,
+          translatorRequested,
+          requestedLanguage,
+          translatorId,
           title: workshop.title,
           category: workshop.category,
           ward: workshop.ward,
@@ -186,11 +190,60 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
       }
     };
 
+    // Recommend approved translators for the selected language
+    const chooseTranslator = async (requestedLanguage) => {
+      try {
+        const translators = await fetchApprovedTranslators();
+        const matches = matchTranslators({
+          translators,
+          requestedLanguage,
+          ward: workshop.ward,
+        });
+
+        if (matches.length === 0) {
+          Alert.alert(
+            "No exact match",
+            "No approved translators currently match this language and ward. We will still mark translator requested.",
+            [
+              { text: "Continue", onPress: () => saveBooking(true, requestedLanguage, null) },
+              { text: "Cancel", style: "cancel" },
+            ]
+          );
+          return;
+        }
+
+        const topMatches = matches.slice(0, 3);
+        const buttons = topMatches.map((translator) => ({
+          text: `${translator.displayName} (${Number(translator.translatorProfile?.ratingAverage || 0).toFixed(1)}⭐)`,
+          onPress: () => saveBooking(true, requestedLanguage, translator.id),
+        }));
+
+        Alert.alert(
+          "Select translator",
+          `Recommended: ${topMatches[0].displayName}`,
+          [
+            ...buttons,
+            { text: "Request without selecting", onPress: () => saveBooking(true, requestedLanguage, null) },
+            { text: "Cancel", style: "cancel" },
+          ]
+        );
+      } catch (error) {
+        Alert.alert("Translator matching failed", error.message || "Could not match translators right now.");
+      }
+    };
+
+    // Ask which language needs translation support
     const askTranslatorLanguage = () => {
-      Alert.alert("Choose translator language", "Select a language for translation support", [
-        { text: "English", onPress: () => saveBooking(true, "English") },
-        { text: "Arabic", onPress: () => saveBooking(true, "Arabic") },
-        { text: "French", onPress: () => saveBooking(true, "French") },
+      const languageButtons = SUPPORTED_LANGUAGES
+        .filter((language) => language !== "Japanese")
+        .map((language) => ({
+          text: language,
+          onPress: () => chooseTranslator(language),
+        }));
+
+      // All languages in one alert; on Android (RN ≥0.68) renders as a scrollable list
+      Alert.alert("Choose translator language", "Select the language you need support for", [
+        ...languageButtons,
         { text: "Cancel", style: "cancel" },
       ]);
     };

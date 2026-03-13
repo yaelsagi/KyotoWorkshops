@@ -717,7 +717,10 @@ export async function fetchPlatformCategories() {
       .sort((a, b) => a.localeCompare(b));
     return merged;
   } catch (error) {
-    console.warn('Could not fetch platform categories, using defaults:', error.message);
+    // Fall back quietly when guest users cannot read platform settings
+    if (!String(error?.message || '').toLowerCase().includes('insufficient permissions')) {
+      console.warn('Could not fetch platform categories, using defaults:', error.message);
+    }
     return WORKSHOP_CATEGORIES
       .map(normalizeCategoryLabel)
       .filter(Boolean)

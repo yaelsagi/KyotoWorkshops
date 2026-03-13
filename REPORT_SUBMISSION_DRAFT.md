@@ -270,6 +270,19 @@ Testing used Jest with existing service-focused test suites. The objective was t
 
 All existing test suites pass after moderation workflow integration.
 
+### 9.4 Defensive Programming
+
+This project includes concrete defensive programming measures beyond baseline validation:
+
+- **Persistent auth state on native:** Firebase Auth is initialized with React Native AsyncStorage persistence to avoid memory-only sessions.
+- **Defense-in-depth admin guards:** Admin Review is protected at both the entry point (Profile button) and the destination screen.
+- **Role-based access checks:** Admin workflows require `roles.admin === true`, not just signed-in status.
+- **Guest-safe redirect prompts:** Unauthorized users receive clear prompts with Sign In/Create Account actions and redirect-back behavior.
+- **Duplicate write prevention:** Admin approve/reject actions disable while in-flight to prevent double tap submissions.
+- **Index-safe queue loading:** Pending translator queries were adjusted to avoid composite index failures during runtime.
+- **Permission-safe category fallback:** Platform category reads fail gracefully to defaults when Firestore permissions deny access.
+- **Deterministic role defaults:** User schema/context defaults include `admin: false` to prevent undefined-role edge cases.
+
 **Figure 6.** Test run evidence snapshot.  
 *Caption:* Passing Jest suites confirming stability after workflow refactor.
 
@@ -288,7 +301,7 @@ All existing test suites pass after moderation workflow integration.
 ### 10.2 Limitations
 
 - Translator application review is scaffolded but not fully implemented.
-- Admin access control is intentionally lightweight for coursework testing.
+- Firestore rules should mirror UI admin checks for full backend enforcement.
 - Location coordinates are simplified defaults in current workshop submission path.
 
 ### 10.3 Improvements for Future Work

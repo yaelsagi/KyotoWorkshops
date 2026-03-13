@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { getUserProfile } from "../services/userService";
+import { DEFAULT_TRANSLATOR_APPLICATION, DEFAULT_TRANSLATOR_PROFILE } from "../constants/translatorOptions";
+
+const DEFAULT_ROLES = {
+  admin: false,
+  host: false,
+  translator: false,
+};
 
 // Create the user context
 const UserContext = createContext();
@@ -33,10 +40,12 @@ export const UserProvider = ({ children }) => {
             email: authUser.email,
             displayName: profile.displayName || authUser.displayName,
             photoURL: profile.photoURL || null,
-            roles: profile.roles || { host: false, translator: false },
-            translatorApplicationStatus: profile.translatorApplicationStatus || 'none',
+            roles: { ...DEFAULT_ROLES, ...(profile.roles || {}) },
+            translatorApplication: profile.translatorApplication || DEFAULT_TRANSLATOR_APPLICATION,
+            translatorProfile: profile.translatorProfile || DEFAULT_TRANSLATOR_PROFILE,
             languages: profile.languages || [],
             createdAt: profile.createdAt,
+            updatedAt: profile.updatedAt,
           });
         } else {
           // Fallback if profile doesn't exist in Firestore (shouldn't happen normally)
@@ -47,8 +56,9 @@ export const UserProvider = ({ children }) => {
             email: authUser.email,
             displayName: authUser.displayName,
             photoURL: null,
-            roles: { host: false, translator: false },
-            translatorApplicationStatus: 'none',
+            roles: DEFAULT_ROLES,
+            translatorApplication: DEFAULT_TRANSLATOR_APPLICATION,
+            translatorProfile: DEFAULT_TRANSLATOR_PROFILE,
             languages: [],
           });
         }
@@ -62,8 +72,9 @@ export const UserProvider = ({ children }) => {
           email: authUser.email,
           displayName: authUser.displayName,
           photoURL: null,
-          roles: { host: false, translator: false },
-          translatorApplicationStatus: 'none',
+          roles: DEFAULT_ROLES,
+          translatorApplication: DEFAULT_TRANSLATOR_APPLICATION,
+          translatorProfile: DEFAULT_TRANSLATOR_PROFILE,
           languages: [],
         });
       } finally {

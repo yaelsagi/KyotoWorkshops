@@ -10,6 +10,7 @@ import { normalizeWardName } from '../utils/normalizeWardName';
 
 const BOOKINGS_KEY = 'kyoto_bookings';
 const BOOKING_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed'];
+const TRANSLATOR_BOOKING_STATUSES = ['none', 'requested', 'assigned', 'completed'];
 
 function getPrimaryWorkshopImage(workshop) {
   if (!workshop?.images || !Array.isArray(workshop.images) || workshop.images.length === 0) {
@@ -63,13 +64,17 @@ function validateBooking(booking) {
   
   // Check translator options if translator was requested
   if (booking.translatorRequested === true) {
-    if (!booking.translatorLanguage) {
+    if (!booking.requestedLanguage) {
       errors.push('Language must be specified when requesting translator');
     }
     
-    if (!SUPPORTED_LANGUAGES.includes(booking.translatorLanguage)) {
+    if (!SUPPORTED_LANGUAGES.includes(booking.requestedLanguage)) {
       errors.push('Invalid translator language');
     }
+  }
+
+  if (booking.translatorStatus && !TRANSLATOR_BOOKING_STATUSES.includes(booking.translatorStatus)) {
+    errors.push(`Translator status must be one of: ${TRANSLATOR_BOOKING_STATUSES.join(', ')}`);
   }
   
   // Price should be positive if it exists
@@ -221,6 +226,12 @@ export async function createBooking(bookingData) {
     const completeBooking = {
       ...completeBookingDraft,
       status: bookingData.status || 'confirmed',
+      translatorRequested: bookingData.translatorRequested === true,
+      requestedLanguage: bookingData.translatorRequested ? bookingData.requestedLanguage || null : null,
+      translatorId: bookingData.translatorId || null,
+      translatorStatus: bookingData.translatorRequested
+        ? (bookingData.translatorId ? 'assigned' : 'requested')
+        : 'none',
       bookedAt: new Date().toISOString(),
     };
     
@@ -327,4 +338,4 @@ export async function deleteBooking(bookingId) {
   }
 }
 
-export { validateBooking, BOOKING_STATUSES };
+export { validateBooking, BOOKING_STATUSES, TRANSLATOR_BOOKING_STATUSES };

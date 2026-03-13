@@ -4,6 +4,9 @@
 
 - add heptics (added already to create workshop screen) and fallback
 - go over all scripts to check for magic numbers
+- audit extra auth guards before protected screens
+- create software architecture diagram
+- create component/class diagram
 
 ## ✅ Phase 1: Auth Foundation (COMPLETED)
 

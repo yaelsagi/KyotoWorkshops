@@ -85,8 +85,25 @@ export default function FiltersSheet({
 
   const wardsList = useMemo(() => (Array.isArray(wards) ? wards : [ALL_OPTION]), [wards]);
   const categoryList = useMemo(() => Array.from(new Set(categories || [])), [categories]);
+  const selectedWards = useMemo(() => (
+    Array.isArray(draft.selectedWards) ? draft.selectedWards : []
+  ), [draft.selectedWards]);
+  const allWardsSelected = selectedWards.length === 0;
 
   const allCategoriesSelected = !Array.isArray(draft.selectedCategories) || draft.selectedCategories.length === 0;
+
+  const toggleWard = useCallback((ward) => {
+    setDraft((prev) => {
+      const selected = Array.isArray(prev.selectedWards) ? prev.selectedWards : [];
+      if (selected.includes(ward)) {
+        return {
+          ...prev,
+          selectedWards: selected.filter((item) => item !== ward),
+        };
+      }
+      return { ...prev, selectedWards: [...selected, ward] };
+    });
+  }, []);
 
   const toggleCategory = useCallback((category) => {
     setDraft((prev) => {
@@ -208,17 +225,32 @@ export default function FiltersSheet({
 
             <View style={styles.block}>
               <Text style={styles.label}>Kyoto ward / area</Text>
+              <Text style={styles.help}>Select one or more wards</Text>
               <View style={styles.chipsWrap}>
+                <Pressable
+                  onPress={() => set({ selectedWards: [] })}
+                  style={[styles.chip, allWardsSelected && styles.chipSelected]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Show all wards"
+                  accessibilityHint="Clears ward filters"
+                >
+                  <Text style={[styles.chipText, allWardsSelected && styles.chipTextSelected]}>{ALL_OPTION}</Text>
+                </Pressable>
+
                 {wardsList.map((ward) => {
-                  const selected = draft.ward === ward;
+                  if (ward === ALL_OPTION) {
+                    return null;
+                  }
+
+                  const selected = selectedWards.includes(ward);
                   return (
                     <Pressable
                       key={ward}
-                      onPress={() => set({ ward })}
+                      onPress={() => toggleWard(ward)}
                       style={[styles.chip, selected && styles.chipSelected]}
                       accessibilityRole="button"
-                      accessibilityLabel={`Filter by ward ${ward}`}
-                      accessibilityHint="Selects ward filter"
+                      accessibilityLabel={`Toggle ward ${ward}`}
+                      accessibilityHint="Adds or removes this ward from filter"
                     >
                       <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{ward}</Text>
                     </Pressable>

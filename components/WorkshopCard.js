@@ -1,0 +1,192 @@
+// Reusable workshop card for browse and favourites lists
+import React, { useState } from 'react';
+import { View, Text, Pressable, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
+import { CameraIcon, HeartIcon } from 'react-native-heroicons/outline';
+
+export default function WorkshopCard({ workshop, onPress, onFavouriteToggle }) {
+  // Track image loading state per card instance
+  const [imageLoading, setImageLoading] = useState(true);
+  const firstImageUrl = workshop.images && workshop.images.length > 0
+    ? workshop.images[0]
+    : null;
+
+  return (
+    <Pressable
+      style={styles.card}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`View ${workshop.title} workshop details`}
+    >
+      {/* Workshop image with loading state */}
+      <View style={styles.cardImagePlaceholder}>
+        {firstImageUrl ? (
+          <>
+            {imageLoading && (
+              <ActivityIndicator
+                size="small"
+                color="#8B7B6B"
+                style={StyleSheet.absoluteFill}
+              />
+            )}
+            <Image
+              source={{ uri: firstImageUrl }}
+              style={styles.cardImage}
+              contentFit="cover"
+              cachePolicy="disk"
+              onLoadStart={() => setImageLoading(true)}
+              onLoadEnd={() => setImageLoading(false)}
+              onError={() => setImageLoading(false)}
+              accessibilityLabel={`${workshop.title} workshop image`}
+              accessibilityRole="image"
+            />
+          </>
+        ) : (
+          <CameraIcon size={36} color="#8B7B6B" />
+        )}
+
+        {workshop.isTop && (
+          <View style={styles.topBadge}>
+            <Text style={styles.topBadgeText}>Top Workshop</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Workshop info */}
+      <View style={styles.cardContent}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardMeta}>
+            <Text style={styles.cardTitle} numberOfLines={1}>
+              {workshop.title}
+            </Text>
+            <Text style={styles.cardCategory}>{workshop.category}</Text>
+          </View>
+
+          {/* Optional favourite toggle button */}
+          {onFavouriteToggle && (
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                onFavouriteToggle(workshop.id);
+              }}
+              style={styles.favouriteButton}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${workshop.title} from favourites`}
+            >
+              <HeartIcon size={18} color="#C1121F" />
+            </Pressable>
+          )}
+        </View>
+
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardLocation}>{workshop.ward}</Text>
+          <Text style={styles.cardPrice}>¥{workshop.priceYen.toLocaleString()}</Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    marginBottom: 16,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E6E2DA',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  cardImagePlaceholder: {
+    width: '100%',
+    height: 160,
+    backgroundColor: '#F5F1E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  cardContent: {
+    padding: 14,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  cardMeta: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1F1F1F',
+    marginBottom: 4,
+  },
+  cardCategory: {
+    fontSize: 13,
+    color: '#666',
+  },
+  favouriteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFF0F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  cardLocation: {
+    fontSize: 13,
+    color: '#666',
+  },
+  cardPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F1F1F',
+  },
+  topBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  topBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1F1F1F',
+    letterSpacing: 0.3,
+  },
+});

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   StyleSheet,
   KeyboardAvoidingView,
@@ -12,6 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PasswordInput from '../components/PasswordInput';
 import { changeCurrentUserPassword } from '../services/authService';
 import { getPasswordRuleChecks, getPasswordValidationError, PASSWORD_REQUIREMENTS_TEXT } from '../utils/passwordValidation';
 
@@ -20,9 +20,6 @@ export default function ChangePasswordScreen({ navigation }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   // Submit password change
@@ -106,57 +103,31 @@ export default function ChangePasswordScreen({ navigation }) {
           {/* Password form */}
           <View style={styles.form}>
             <Text style={styles.label}>Current Password</Text>
-            <View style={styles.inputRow}>
-              <TextInput
-                style={styles.inputField}
-                placeholder="Enter current password"
-                placeholderTextColor="#999"
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                secureTextEntry={!showCurrentPassword}
-                autoCapitalize="none"
-                autoComplete="password"
-                editable={!submitting}
-                accessibilityLabel="Current password"
-                accessibilityHint="Enter your current password"
-              />
-              <Pressable
-                onPress={() => setShowCurrentPassword((prev) => !prev)}
-                disabled={submitting}
-                accessibilityRole="button"
-                accessibilityLabel={showCurrentPassword ? 'Hide current password' : 'Show current password'}
-                accessibilityHint="Toggles current password visibility"
-              >
-                <Text style={styles.toggleText}>{showCurrentPassword ? 'Hide' : 'Show'}</Text>
-              </Pressable>
-            </View>
+            <PasswordInput
+              placeholder="Enter current password"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              autoComplete="password"
+              disabled={submitting}
+              accessibilityLabel="Current password"
+              accessibilityHint="Enter your current password"
+              style={styles.passwordInputContainer}
+              inputStyle={styles.passwordInputText}
+            />
             {currentPasswordError ? <Text style={styles.errorText}>{currentPasswordError}</Text> : null}
 
             <Text style={styles.label}>New Password</Text>
-            <View style={styles.inputRow}>
-              <TextInput
-                style={styles.inputField}
-                placeholder="Enter new password"
-                placeholderTextColor="#999"
-                value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry={!showNewPassword}
-                autoCapitalize="none"
-                autoComplete="password-new"
-                editable={!submitting}
-                accessibilityLabel="New password"
-                accessibilityHint="Enter your new password"
-              />
-              <Pressable
-                onPress={() => setShowNewPassword((prev) => !prev)}
-                disabled={submitting}
-                accessibilityRole="button"
-                accessibilityLabel={showNewPassword ? 'Hide new password' : 'Show new password'}
-                accessibilityHint="Toggles new password visibility"
-              >
-                <Text style={styles.toggleText}>{showNewPassword ? 'Hide' : 'Show'}</Text>
-              </Pressable>
-            </View>
+            <PasswordInput
+              placeholder="Enter new password"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              autoComplete="password-new"
+              disabled={submitting}
+              accessibilityLabel="New password"
+              accessibilityHint="Enter your new password"
+              style={styles.passwordInputContainer}
+              inputStyle={styles.passwordInputText}
+            />
             <Text style={styles.helperText}>{PASSWORD_REQUIREMENTS_TEXT}</Text>
             <View style={styles.ruleList}>
               <Text style={[styles.ruleItem, passwordRuleChecks.hasMinimumLength && styles.ruleItemPassed]}>
@@ -173,30 +144,17 @@ export default function ChangePasswordScreen({ navigation }) {
             {samePasswordError ? <Text style={styles.errorText}>{samePasswordError}</Text> : null}
 
             <Text style={styles.label}>Confirm New Password</Text>
-            <View style={styles.inputRow}>
-              <TextInput
-                style={styles.inputField}
-                placeholder="Confirm new password"
-                placeholderTextColor="#999"
-                value={confirmNewPassword}
-                onChangeText={setConfirmNewPassword}
-                secureTextEntry={!showConfirmNewPassword}
-                autoCapitalize="none"
-                autoComplete="password-new"
-                editable={!submitting}
-                accessibilityLabel="Confirm new password"
-                accessibilityHint="Confirm your new password"
-              />
-              <Pressable
-                onPress={() => setShowConfirmNewPassword((prev) => !prev)}
-                disabled={submitting}
-                accessibilityRole="button"
-                accessibilityLabel={showConfirmNewPassword ? 'Hide confirm new password' : 'Show confirm new password'}
-                accessibilityHint="Toggles confirm password visibility"
-              >
-                <Text style={styles.toggleText}>{showConfirmNewPassword ? 'Hide' : 'Show'}</Text>
-              </Pressable>
-            </View>
+            <PasswordInput
+              placeholder="Confirm new password"
+              value={confirmNewPassword}
+              onChangeText={setConfirmNewPassword}
+              autoComplete="password-new"
+              disabled={submitting}
+              accessibilityLabel="Confirm new password"
+              accessibilityHint="Confirm your new password"
+              style={styles.passwordInputContainer}
+              inputStyle={styles.passwordInputText}
+            />
             {confirmPasswordError ? <Text style={styles.errorText}>{confirmPasswordError}</Text> : null}
 
             <Pressable
@@ -252,29 +210,18 @@ const styles = StyleSheet.create({
     color: '#1F1F1F',
     marginBottom: 8,
   },
-  inputRow: {
+  // Style overrides passed to PasswordInput to match this screen's theme
+  passwordInputContainer: {
     backgroundColor: '#FBFAF7',
     borderRadius: 12,
-    paddingLeft: 16,
-    paddingRight: 12,
-    minHeight: 52,
-    borderWidth: 1,
     borderColor: '#E6E2DA',
-    flexDirection: 'row',
-    alignItems: 'center',
+    minHeight: 52,
     marginBottom: 12,
   },
-  inputField: {
-    flex: 1,
+  passwordInputText: {
     paddingVertical: 14,
     fontSize: 15,
     color: '#1F1F1F',
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F1F1F',
-    paddingLeft: 12,
   },
   helperText: {
     fontSize: 13,

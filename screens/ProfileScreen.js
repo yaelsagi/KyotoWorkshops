@@ -27,21 +27,72 @@ import {
   TrashIcon,
   ExclamationTriangleIcon
 } from 'react-native-heroicons/outline';
-import { useUserCapabilities } from "../context/UserCapabilitiesContext";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
 import { useFavourites } from "../context/FavouritesContext";
 import { signOutUser } from "../services/authService";
 import { uploadUserProfilePhoto, deleteUserProfilePhoto } from "../services/storageService";
 import { updateUserPhotoURL } from "../services/userService";
+import { TRANSLATOR_STATUS_LABELS } from "../constants/translatorOptions";
+import ProfileMenuItem from "../components/ProfileMenuItem";
+import { COLORS } from "../styles/colors";
 
 export default function ProfileScreen({ navigation }) {
-  const { capabilities } = useUserCapabilities();
   const { user: authUser } = useAuth();
   const { currentUser, updateUser } = useUser();
   const { favourites, clearFavourites } = useFavourites();
   const [notifications, setNotifications] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const PHOTO_OPERATION_TIMEOUT_MS = 30000;
+  const translatorStatus = currentUser?.translatorApplication?.status || "none";
+  const translatorButtonLabel = TRANSLATOR_STATUS_LABELS[translatorStatus] || "Become a Translator";
+  const isTranslatorApproved = currentUser?.roles?.translator === true && currentUser?.translatorProfile?.enabled === true;
+  const isHostEnabled = currentUser?.roles?.host === true;
+  const isAdmin = currentUser?.roles?.admin === true;
+
+  // Prevent indefinite loading states when network/storage operations hang
+  const withTimeout = async (promise, timeoutMs, timeoutMessage) => {
+    let timeoutId;
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+      });
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  };
+
+  // Gate admin review access
+  const handleOpenAdminReview = () => {
+    if (!authUser) {                        
+      Alert.alert(
+        "Admin Access",
+        "Please sign in for admin access.",
+        [
+          {
+            text: "Sign In",
+            onPress: () => navigation.navigate("Login", { redirectTo: "AdminReview" }),
+          },
+          {
+            text: "Create Account",
+            onPress: () => navigation.navigate("SignUp", { redirectTo: "AdminReview" }),
+          },
+          { text: "Cancel", style: "cancel" },
+        ]
+      );
+      return;
+    }
+
+    if (!isAdmin) {
+      Alert.alert("Admin Access", "Admin access is restricted to admin accounts.");
+      return;
+    }
+
+    navigation.navigate("AdminReview");
+  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -100,10 +151,7 @@ export default function ProfileScreen({ navigation }) {
     );
   };
 
-  /**
-   * Show the action sheet to choose how to update profile photo
-   * Options: Take Photo, Choose from Library, Remove Photo, Cancel
-   */
+  // Show photo action options
   const handleChangePhoto = () => {
     if (Platform.OS === 'ios') {
       // Use the native iOS action sheet for a better user experience
@@ -142,12 +190,10 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  /**
-   * Open the device camera to take a new photo
-   */
+  // Take profile photo via camera
   const handleTakePhoto = async () => {
     try {
-      // Request camera permissions first
+      // Request camera permissions 
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
       
       if (!permissionResult.granted) {
@@ -173,9 +219,7 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  /**
-   * Open the photo library to choose an existing photo
-   */
+  // Choose profile photo from device's library
   const handlePickFromLibrary = async () => {
     try {
       // Request media library permissions first
@@ -203,10 +247,7 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  /**
-   * Upload the selected photo to Firebase Storage and update user profile
-   * If a photo already exists, delete it first before uploading the new one
-   */
+  // Upload photo and sync profile url
   const uploadPhoto = async (imageAsset) => {
     if (!currentUser?.uid) {
       Alert.alert('Error', 'You must be logged in to update your photo');
@@ -219,7 +260,11 @@ export default function ProfileScreen({ navigation }) {
       // If user has an existing photo, delete it first to avoid storage clutter
       if (currentUser?.photoURL) {
         try {
-          await deleteUserProfilePhoto(currentUser.uid);
+          await withTimeout(
+            deleteUserProfilePhoto(currentUser.uid),
+            PHOTO_OPERATION_TIMEOUT_MS,
+            'Timed out while removing old profile photo'
+          );
           console.log('Old profile photo deleted');
         } catch (error) {
           console.warn('Could not delete old photo, proceeding anyway:', error);
@@ -227,24 +272,35 @@ export default function ProfileScreen({ navigation }) {
       }
 
       // Upload the new photo to Firebase Storage
-      const downloadUrl = await uploadUserProfilePhoto(currentUser.uid, imageAsset);
+      const downloadUrl = await withTimeout(
+        uploadUserProfilePhoto(currentUser.uid, imageAsset),
+        PHOTO_OPERATION_TIMEOUT_MS,
+        'Timed out while uploading profile photo'
+      );
+
+      // Append timestamp to bypass cached avatar
+      const freshUrl = `${downloadUrl}${downloadUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
       
       // Update the user's profile in Firestore with the new photo URL
-      await updateUserPhotoURL(currentUser.uid, downloadUrl);
+      await withTimeout(
+        updateUserPhotoURL(currentUser.uid, freshUrl),
+        PHOTO_OPERATION_TIMEOUT_MS,
+        'Timed out while saving profile photo'
+      );
       
       // Update the local user context so the UI shows the new photo immediately
-      updateUser({ photoURL: downloadUrl });
+      updateUser({ photoURL: freshUrl });
+
+      Alert.alert('Success', 'Profile photo updated');
     } catch (error) {
       console.error('Error uploading photo:', error);
-      Alert.alert('Error', 'Could not upload photo. Please try again.');
+      Alert.alert('Error', error.message || 'Could not upload photo. Please try again.');
     } finally {
       setUploadingPhoto(false);
     }
   };
 
-  /**
-   * Remove the user's profile photo
-   */
+  // Remove profile photo
   const handleRemovePhoto = async () => {
     if (!currentUser?.uid) {
       return;
@@ -262,10 +318,18 @@ export default function ProfileScreen({ navigation }) {
             setUploadingPhoto(true);
             try {
               // Delete the photo from Firebase Storage
-              await deleteUserProfilePhoto(currentUser.uid);
+              await withTimeout(
+                deleteUserProfilePhoto(currentUser.uid),
+                PHOTO_OPERATION_TIMEOUT_MS,
+                'Timed out while removing profile photo'
+              );
               
               // Remove the photo URL from the user's Firestore profile
-              await updateUserPhotoURL(currentUser.uid, null);
+              await withTimeout(
+                updateUserPhotoURL(currentUser.uid, null),
+                PHOTO_OPERATION_TIMEOUT_MS,
+                'Timed out while clearing profile photo'
+              );
               
               // Update the local user context immediately
               updateUser({ photoURL: null });
@@ -342,53 +406,22 @@ export default function ProfileScreen({ navigation }) {
             />
           </View>
 
-          <Pressable style={styles.menuItem} onPress={handleShare}>
-            <ShareIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Share App</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </Pressable>
+          <ProfileMenuItem icon={<ShareIcon size={24} color={COLORS.primaryText} />} label="Share App" onPress={handleShare} />
         </View>
 
         {/* Support Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support</Text>
-          
-          <Pressable 
-            style={styles.menuItem}
-            onPress={() => Alert.alert("Help", "For support, please contact support@kyotoworkshops.com")}
-          >
-            <QuestionMarkCircleIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Help & FAQ</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </Pressable>
 
-          <Pressable 
-            style={styles.menuItem}
-            onPress={() => Alert.alert("Privacy Policy", "View our privacy policy at kyotoworkshops.com/privacy")}
-          >
-            <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Privacy Policy</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </Pressable>
-
-          <Pressable style={styles.menuItem} onPress={handleAbout}>
-            <InformationCircleIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-            <Text style={styles.menuText}>About</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </Pressable>
+          <ProfileMenuItem icon={<QuestionMarkCircleIcon size={24} color={COLORS.primaryText} />} label="Help & FAQ" onPress={() => Alert.alert("Help", "For support, please contact support@kyotoworkshops.com")} />
+          <ProfileMenuItem icon={<ShieldCheckIcon size={24} color={COLORS.primaryText} />} label="Privacy Policy" onPress={() => Alert.alert("Privacy Policy", "View our privacy policy at kyotoworkshops.com/privacy")} />
+          <ProfileMenuItem icon={<InformationCircleIcon size={24} color={COLORS.primaryText} />} label="About" onPress={handleAbout} />
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Developer / Demo</Text>
 
-          <Pressable
-            style={styles.menuItem}
-            onPress={() => navigation.navigate("AdminReview")}
-          >
-            <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Admin Review</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </Pressable>
+          <ProfileMenuItem icon={<ShieldCheckIcon size={24} color={COLORS.primaryText} />} label="Admin Review" onPress={handleOpenAdminReview} />
         </View>
 
         <Text style={styles.version}>Version 1.0.0</Text>
@@ -439,8 +472,10 @@ export default function ProfileScreen({ navigation }) {
         <Pressable 
           style={styles.statCard}
           onPress={() => {
-            if (capabilities.translator) {
-              Alert.alert("Translator Dashboard", "Translation requests and profile settings will be available in a future update.");
+            if (isTranslatorApproved) {
+              navigation.navigate("TranslatorDashboard");
+            } else if (translatorStatus === "pending" || translatorStatus === "interview_scheduled") {
+              Alert.alert("Application in progress", "Your translator application is under review.");
             } else {
               navigation.navigate("TranslatorSetup");
             }
@@ -448,20 +483,20 @@ export default function ProfileScreen({ navigation }) {
         >
           <Text style={styles.statValue}>🌐</Text>
           <Text style={styles.statLabel}>
-            {capabilities.translator ? "Translator Dashboard" : "Become a Translator"}
+            {translatorButtonLabel}
           </Text>
         </Pressable>
         <Pressable 
           style={styles.statCard}
           onPress={() =>
-            capabilities.host
+            isHostEnabled
               ? navigation.navigate("MyWorkshops")
               : navigation.navigate("CreateWorkshop")
           }
         >
           <Text style={styles.statValue}>🎨</Text>
           <Text style={styles.statLabel}>
-            {capabilities.host ? "Workshop Host Dashboard" : "Host a Workshop"}
+            {isHostEnabled ? "Workshop Host Dashboard" : "Host a Workshop"}
           </Text>
         </Pressable>
       </View>
@@ -482,91 +517,32 @@ export default function ProfileScreen({ navigation }) {
           />
         </View>
 
-        <Pressable style={styles.menuItem} onPress={handleShare}>
-          <ShareIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-          <Text style={styles.menuText}>Share App</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </Pressable>
+        <ProfileMenuItem icon={<ShareIcon size={24} color={COLORS.primaryText} />} label="Share App" onPress={handleShare} />
       </View>
 
       {/* Account Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account</Text>
-        
-        <Pressable 
-          style={styles.menuItem}
-          onPress={() => navigation.navigate("EditProfile")}
-        >
-          <PencilIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-          <Text style={styles.menuText}>Edit Profile</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </Pressable>
 
-        <Pressable 
-          style={styles.menuItem}
-          onPress={() => navigation.navigate("ChangePassword")}
-        >
-          <LockClosedIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-          <Text style={styles.menuText}>Change Password</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </Pressable>
-
-        <Pressable style={styles.menuItem} onPress={handleClearData}>
-          <TrashIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-          <Text style={styles.menuText}>Clear All Data</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </Pressable>
-
-        <Pressable 
-          style={[styles.menuItem, styles.menuItemDanger]}
-          onPress={() => navigation.navigate("DeleteAccount")}
-        >
-          <ExclamationTriangleIcon size={24} color="#C1121F" style={styles.menuIcon} />
-          <Text style={[styles.menuText, styles.menuTextDanger]}>Delete Account</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </Pressable>
+        <ProfileMenuItem icon={<PencilIcon size={24} color={COLORS.primaryText} />} label="Edit Profile" onPress={() => navigation.navigate("EditProfile")} />
+        <ProfileMenuItem icon={<LockClosedIcon size={24} color={COLORS.primaryText} />} label="Change Password" onPress={() => navigation.navigate("ChangePassword")} />
+        <ProfileMenuItem icon={<TrashIcon size={24} color={COLORS.primaryText} />} label="Clear All Data" onPress={handleClearData} />
+        <ProfileMenuItem icon={<ExclamationTriangleIcon size={24} color={COLORS.danger} />} label="Delete Account" onPress={() => navigation.navigate("DeleteAccount")} danger />
       </View>
 
       {/* Support Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Support</Text>
-        
-        <Pressable 
-          style={styles.menuItem}
-          onPress={() => Alert.alert("Help", "For support, please contact support@kyotoworkshops.com")}
-        >
-          <QuestionMarkCircleIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-          <Text style={styles.menuText}>Help & FAQ</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </Pressable>
 
-        <Pressable 
-          style={styles.menuItem}
-          onPress={() => Alert.alert("Privacy Policy", "View our privacy policy at kyotoworkshops.com/privacy")}
-        >
-          <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-          <Text style={styles.menuText}>Privacy Policy</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </Pressable>
-
-        <Pressable style={styles.menuItem} onPress={handleAbout}>
-          <InformationCircleIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-          <Text style={styles.menuText}>About</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </Pressable>
+        <ProfileMenuItem icon={<QuestionMarkCircleIcon size={24} color={COLORS.primaryText} />} label="Help & FAQ" onPress={() => Alert.alert("Help", "For support, please contact support@kyotoworkshops.com")} />
+        <ProfileMenuItem icon={<ShieldCheckIcon size={24} color={COLORS.primaryText} />} label="Privacy Policy" onPress={() => Alert.alert("Privacy Policy", "View our privacy policy at kyotoworkshops.com/privacy")} />
+        <ProfileMenuItem icon={<InformationCircleIcon size={24} color={COLORS.primaryText} />} label="About" onPress={handleAbout} />
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Developer / Demo</Text>
 
-        <Pressable
-          style={styles.menuItem}
-          onPress={() => navigation.navigate("AdminReview")}
-        >
-          <ShieldCheckIcon size={24} color="#1F1F1F" style={styles.menuIcon} />
-          <Text style={styles.menuText}>Admin Review</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </Pressable>
+        <ProfileMenuItem icon={<ShieldCheckIcon size={24} color={COLORS.primaryText} />} label="Admin Review" onPress={handleOpenAdminReview} />
       </View>
 
       {/* Logout Button */}
@@ -714,36 +690,6 @@ const styles = StyleSheet.create({
   settingHelp: {
     fontSize: 13,
     color: "#666",
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "#FBFAF7",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E6E2DA",
-    marginBottom: 8,
-  },
-  menuIcon: {
-    marginRight: 14,
-  },
-  menuText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1F1F1F",
-  },
-  menuArrow: {
-    fontSize: 24,
-    color: "#999",
-  },
-  menuItemDanger: {
-    borderColor: "#FFE6E6",
-    backgroundColor: "#FFF5F5",
-  },
-  menuTextDanger: {
-    color: "#C1121F",
   },
   logoutButton: {
     marginHorizontal: 16,

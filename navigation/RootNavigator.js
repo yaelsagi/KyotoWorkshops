@@ -10,6 +10,7 @@ import AllReviewsScreen from "../screens/AllReviewsScreen";
 import AllPicturesScreen from "../screens/AllPicturesScreen";
 import MyWorkshopsScreen from "../screens/MyWorkshopsScreen";
 import TranslatorSetupScreen from "../screens/TranslatorSetupScreen";
+import TranslatorDashboardScreen from "../screens/TranslatorDashboardScreen";
 import CreateWorkshopScreen from "../screens/CreateWorkshopScreen";
 import AdminReviewScreen from "../screens/AdminReviewScreen";
 import ChangePasswordScreen from "../screens/ChangePasswordScreen";
@@ -75,7 +76,16 @@ export default function RootNavigator() {
         name="TranslatorSetup"
         component={TranslatorSetupScreen}
         options={{
-          title: "Translator Setup",
+          title: "Translator Application",
+          headerBackTitleVisible: false,
+        }}
+      />
+
+      <RootStack.Screen
+        name="TranslatorDashboard"
+        component={TranslatorDashboardScreen}
+        options={{
+          title: "Translator Dashboard",
           headerBackTitleVisible: false,
         }}
       />

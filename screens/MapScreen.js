@@ -42,7 +42,6 @@ import { fetchWorkshops, prefetchWorkshopImages, fetchPlatformCategories } from 
 import WorkshopMapMarker from "../components/WorkshopMapMarker";
 import MapSearchBar from "../components/MapSearchBar";
 import FiltersSheet from "../components/FiltersSheet";
-import { ALL_OPTION } from "../constants/kyotoWards";
 import { WORKSHOP_CATEGORIES } from "../constants/workshopCategories";
 import { applyFilters, DEFAULT_FILTERS, deriveFilterOptions, normalizePriceRange } from "../utils/filters";
 import { useFavourites } from "../context/FavouritesContext";
@@ -164,7 +163,7 @@ export default function MapScreen({ navigation }) {
       ...DEFAULT_FILTERS,
       ...draft,
       ...normalizedRange,
-      ward: draft.ward || ALL_OPTION,
+      selectedWards: Array.isArray(draft.selectedWards) ? draft.selectedWards : [],
       selectedCategories: Array.isArray(draft.selectedCategories) ? draft.selectedCategories : [],
     });
 
@@ -187,7 +186,9 @@ export default function MapScreen({ navigation }) {
       if (chip.type === "onlyFavourites") next.onlyFavourites = false;
       if (chip.type === "onlyTop") next.onlyTop = false;
       if (chip.type === "translatorAvailable") next.translatorAvailable = false;
-      if (chip.type === "ward") next.ward = ALL_OPTION;
+      if (chip.type === "ward") {
+        next.selectedWards = (next.selectedWards || []).filter((ward) => ward !== chip.value);
+      }
       if (chip.type === "category") {
         next.selectedCategories = (next.selectedCategories || []).filter((category) => category !== chip.value);
       }
@@ -217,9 +218,12 @@ export default function MapScreen({ navigation }) {
       chips.push({ key: "translator", label: "Translator", type: "translatorAvailable" });
     }
 
-    if (appliedFilters.ward && appliedFilters.ward !== ALL_OPTION) {
-      chips.push({ key: `ward-${appliedFilters.ward}`, label: appliedFilters.ward, type: "ward" });
-    }
+    const selectedWards = Array.isArray(appliedFilters.selectedWards)
+      ? appliedFilters.selectedWards
+      : [];
+    selectedWards.forEach((ward) => {
+      chips.push({ key: `ward-${ward}`, label: ward, type: "ward", value: ward });
+    });
 
     const categories = Array.isArray(appliedFilters.selectedCategories)
       ? appliedFilters.selectedCategories

@@ -1,22 +1,23 @@
 import React, { useState, useCallback } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
   Pressable,
   Alert,
   Platform,
-  ActivityIndicator
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { CalendarDaysIcon, CameraIcon, LockClosedIcon } from "react-native-heroicons/outline";
-
 import { fetchUserBookings, cancelBooking } from "../services/bookingService";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
+import ScreenSpinner from "../components/ScreenSpinner";
+import EmptyState from "../components/EmptyState";
+import { COLORS } from "../styles/colors";
 
 export default function BookingsScreen({ navigation }) {
   const { user: authUser } = useAuth();
@@ -139,32 +140,20 @@ export default function BookingsScreen({ navigation }) {
   );
 
   if (loading) {
-    return (
-      <SafeAreaView style={styles.container} edges={["top"]}>
-        <View style={styles.centerContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <ScreenSpinner />;
   }
 
-  // Guest mode - require authentication
+  // Guest mode - require sign in
   if (!authUser) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
-        <View style={styles.centerContainer}>
-          <LockClosedIcon size={56} color="#DDD" style={styles.emptyIcon} />
-          <Text style={styles.emptyTitle}>Sign in required</Text>
-          <Text style={styles.emptyText}>
-            Sign in to view and manage your workshop bookings
-          </Text>
-          <Pressable 
-            style={styles.exploreButton}
-            onPress={() => navigation.navigate("Login")}
-          >
-            <Text style={styles.exploreButtonText}>Sign In</Text>
-          </Pressable>
-        </View>
+        <EmptyState
+          icon={<LockClosedIcon size={56} color={COLORS.emptyStateIcon} />}
+          title="Sign in required"
+          message="Sign in to view and manage your workshop bookings"
+          buttonLabel="Sign In"
+          onButtonPress={() => navigation.navigate("Login")}
+        />
       </SafeAreaView>
     );
   }
@@ -172,19 +161,13 @@ export default function BookingsScreen({ navigation }) {
   if (bookings.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
-        <View style={styles.centerContainer}>
-          <CalendarDaysIcon size={56} color="#DDD" style={styles.emptyIcon} />
-          <Text style={styles.emptyTitle}>No bookings yet</Text>
-          <Text style={styles.emptyText}>
-            When you book a workshop, it will appear here
-          </Text>
-          <Pressable 
-            style={styles.exploreButton}
-            onPress={() => navigation.navigate("Explore")}
-          >
-            <Text style={styles.exploreButtonText}>Find Workshops</Text>
-          </Pressable>
-        </View>
+        <EmptyState
+          icon={<CalendarDaysIcon size={56} color={COLORS.emptyStateIcon} />}
+          title="No bookings yet"
+          message="When you book a workshop, it will appear here"
+          buttonLabel="Find Workshops"
+          onButtonPress={() => navigation.navigate("Explore")}
+        />
       </SafeAreaView>
     );
   }
@@ -213,17 +196,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-  },
-  centerContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 30,
-    backgroundColor: "#FFFFFF",
-  },
-  loadingText: {
-    fontSize: 16,
-    color: "#666",
   },
   header: {
     paddingHorizontal: 18,
@@ -357,33 +329,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: "#C1121F",
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#1F1F1F",
-    marginBottom: 10,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  exploreButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    backgroundColor: "#1F1F1F",
-    borderRadius: 12,
-  },
-  exploreButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#FFFFFF",
   },
 });

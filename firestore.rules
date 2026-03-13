@@ -1,20 +1,3 @@
-# Firestore Security Rules
-
-## Overview
-These rules protect ownership, prevent ID-forging, and enforce admin-only platform writes.
-
-## How to Apply Rules
-
-1. Go to Firebase Console
-2. Select your project
-3. Open Firestore Database
-4. Open the Rules tab
-5. Replace rules with the block below
-6. Publish
-
-## Production Security Rules
-
-```javascript
 rules_version = '2';
 
 service cloud.firestore {
@@ -167,38 +150,3 @@ service cloud.firestore {
 
   }
 }
-```
-
-## What These Rules Guarantee
-
-- Guests (users who are not logged in) can browse approved workshops
-- Hosts can see their own workshops
-- Admins can see everything
-- Reviews cannot be faked under another user ID
-- Platform settings are public but only admins can change them
-- Protected ownership fields such as ownerId and userId cannot be changed after creation
-
-## Testing Security Rules
-
-### Test 1: Workshop Visibility
-1. Sign out and open Explore/Map
-2. Only approved workshops should be readable
-
-### Test 2: Ownership Lock
-1. Create a workshop as owner A
-2. Try to update `ownerId`
-3. Update must fail
-
-### Test 3: Booking Ownership
-1. Create a booking as user A
-2. Try to update `userId`
-3. Update must fail
-
-### Test 4: Admin Platform Write
-1. Sign in as non-admin and try writing `platform/settings`
-2. Write must fail
-3. Sign in as admin and retry
-4. Write must succeed
-
-## Note on Storage Rules
-Use Firebase Storage rules separately in Storage > Rules.

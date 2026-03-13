@@ -11,7 +11,7 @@ export const FILTERS_KEY = "kyoto_last_filters";
 export const DEFAULT_FILTERS = {
   onlyFavourites: false,
   onlyTop: false,
-  ward: ALL_OPTION,
+  selectedWards: [],
   selectedCategories: [],
   minPrice: null,
   maxPrice: null,
@@ -49,7 +49,9 @@ export function normalizePriceRange(minPrice, maxPrice) {
 
 export function applyFilters({ workshops, favouritesSet, filters, query = "" }) {
   const loweredQuery = String(query).trim().toLowerCase();
-  const selectedWard = filters?.ward || ALL_OPTION;
+  const selectedWards = Array.isArray(filters?.selectedWards)
+    ? filters.selectedWards.filter((ward) => ward && ward !== ALL_OPTION)
+    : [];
   const selectedCategories = Array.isArray(filters?.selectedCategories)
     ? filters.selectedCategories
     : [];
@@ -60,8 +62,8 @@ export function applyFilters({ workshops, favouritesSet, filters, query = "" }) 
     if (filters?.onlyFavourites && !favouritesSet.has(workshop.id)) return false;
     if (filters?.onlyTop && !workshop.isTop) return false;
 
-    if (selectedWard !== ALL_OPTION) {
-      if (normalizeWardName(workshop.ward) !== selectedWard) return false;
+    if (selectedWards.length > 0) {
+      if (!selectedWards.includes(normalizeWardName(workshop.ward))) return false;
     }
 
     if (selectedCategories.length > 0) {

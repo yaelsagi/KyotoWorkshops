@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
@@ -12,6 +11,8 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
+import FormInput from '../components/FormInput';
+import PasswordInput from '../components/PasswordInput';
 import { signInWithEmail } from '../services/authService';
 
 export default function LoginScreen({ navigation, route }) {
@@ -61,28 +62,22 @@ export default function LoginScreen({ navigation, route }) {
         </View>
 
         <View style={styles.form}>
-          <TextInput
-            style={styles.input}
+          <FormInput
             placeholder="Email"
-            placeholderTextColor="#999"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
-            editable={!loading}
+            disabled={loading}
           />
 
-          <TextInput
-            style={styles.input}
+          <PasswordInput
             placeholder="Password"
-            placeholderTextColor="#999"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
             autoComplete="password"
-            editable={!loading}
+            disabled={loading}
           />
 
           <TouchableOpacity
@@ -143,15 +138,6 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
-  },
-  input: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
   },
   button: {
     backgroundColor: '#3498db',

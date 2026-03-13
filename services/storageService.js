@@ -331,6 +331,28 @@ export async function deleteUserPhotoFolder(userId) {
   }
 }
 
+// Upload translator proof document
+export async function uploadTranslatorProofDocument(userId, asset, prefix = 'proof') {
+  if (!userId) {
+    throw new Error('User ID is required');
+  }
+
+  if (!asset?.uri) {
+    throw new Error('Document asset is required');
+  }
+
+  const extension = (asset.fileName || asset.uri || '').split('.').pop() || 'jpg';
+  const filename = `${prefix}_${Date.now()}.${extension}`;
+  const storagePath = `translator-docs/${userId}/${filename}`;
+
+  const fileRef = ref(storage, storagePath);
+  const response = await fetch(asset.uri);
+  const blob = await response.blob();
+  await uploadBytes(fileRef, blob);
+  const url = await getDownloadURL(fileRef);
+  return url;
+}
+
 export default {
   uploadWorkshopImage,
   uploadMultipleImagesToWorkshop,
@@ -341,4 +363,5 @@ export default {
   uploadUserProfilePhoto,
   deleteUserProfilePhoto,
   deleteUserPhotoFolder,
+  uploadTranslatorProofDocument,
 };

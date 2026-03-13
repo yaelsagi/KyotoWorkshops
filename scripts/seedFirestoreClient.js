@@ -46,6 +46,120 @@ const db = getFirestore(app);
 // Workshop data (from workshops.json)
 const workshopsData = require('../data/workshops.json');
 
+const SAMPLE_TRANSLATORS = [
+  {
+    id: 'translator_demo_english',
+    displayName: 'Aiko Tanaka',
+    email: 'translator.english@demo.local',
+    photoURL: null,
+    roles: { host: false, translator: true },
+    translatorApplication: {
+      status: 'approved',
+      submittedAt: '2026-03-01T10:00:00.000Z',
+      interviewAt: '2026-03-18 10:00',
+      bio: 'Professional English-Japanese interpreter for cultural workshops.',
+      targetLanguages: ['English'],
+      japaneseLevel: 'Native',
+      japaneseLevelOther: null,
+      otherLanguageLevels: [{ language: 'English', level: 'Native' }],
+      jlptDocumentURL: null,
+      otherProofDocumentURLs: [],
+      wardsAvailable: ['Higashiyama', 'Nakagyo', 'Shimogyo'],
+      notes: null,
+    },
+    translatorProfile: {
+      enabled: true,
+      hourlyRateYen: 4500,
+      availabilitySlots: [
+        { day: 'Saturday', from: '10:00', to: '16:00' },
+        { day: 'Sunday', from: '12:00', to: '18:00' },
+      ],
+      ratingAverage: 4.8,
+      ratingCount: 12,
+      completedJobs: 26,
+    },
+  },
+  {
+    id: 'translator_demo_french',
+    displayName: 'Kenji Morinaga',
+    email: 'translator.french@demo.local',
+    photoURL: null,
+    roles: { host: false, translator: true },
+    translatorApplication: {
+      status: 'approved',
+      submittedAt: '2026-03-02T10:00:00.000Z',
+      interviewAt: '2026-03-18 14:00',
+      bio: 'French-Japanese interpreting specialist for tourism and education.',
+      targetLanguages: ['French'],
+      japaneseLevel: 'JLPT N1',
+      japaneseLevelOther: null,
+      otherLanguageLevels: [{ language: 'French', level: 'Fluent' }],
+      jlptDocumentURL: null,
+      otherProofDocumentURLs: [],
+      wardsAvailable: ['Sakyo', 'Higashiyama', 'Nakagyo'],
+      notes: null,
+    },
+    translatorProfile: {
+      enabled: true,
+      hourlyRateYen: 4200,
+      availabilitySlots: [{ day: 'Sunday', from: '09:00', to: '14:00' }],
+      ratingAverage: 4.6,
+      ratingCount: 8,
+      completedJobs: 14,
+    },
+  },
+  {
+    id: 'translator_demo_chinese',
+    displayName: 'Mei Nakamura',
+    email: 'translator.chinese@demo.local',
+    photoURL: null,
+    roles: { host: false, translator: true },
+    translatorApplication: {
+      status: 'approved',
+      submittedAt: '2026-03-03T10:00:00.000Z',
+      interviewAt: '2026-03-19 11:00',
+      bio: 'Chinese-Japanese interpreter with workshop and guide experience.',
+      targetLanguages: ['Chinese'],
+      japaneseLevel: 'JLPT N2',
+      japaneseLevelOther: null,
+      otherLanguageLevels: [{ language: 'Chinese', level: 'Professional' }],
+      jlptDocumentURL: null,
+      otherProofDocumentURLs: [],
+      wardsAvailable: ['Shimogyo', 'Fushimi', 'Nakagyo'],
+      notes: null,
+    },
+    translatorProfile: {
+      enabled: true,
+      hourlyRateYen: 4000,
+      availabilitySlots: [{ day: 'Saturday', from: '12:00', to: '18:00' }],
+      ratingAverage: 4.9,
+      ratingCount: 16,
+      completedJobs: 31,
+    },
+  },
+];
+
+const SAMPLE_TRANSLATOR_REVIEWS = [
+  {
+    id: 'translator_review_1',
+    translatorId: 'translator_demo_english',
+    learnerId: 'learner_demo_1',
+    bookingId: 'booking_demo_1',
+    rating: 5,
+    comment: 'Very clear and helpful translation during the entire workshop.',
+    createdAt: '2026-03-05T09:00:00.000Z',
+  },
+  {
+    id: 'translator_review_2',
+    translatorId: 'translator_demo_french',
+    learnerId: 'learner_demo_2',
+    bookingId: 'booking_demo_2',
+    rating: 4,
+    comment: 'Friendly and professional support for a first-time learner.',
+    createdAt: '2026-03-06T09:00:00.000Z',
+  },
+];
+
 /**
  * IMPORTANT: Replace these with your actual Firebase Storage URLs
  * 
@@ -176,6 +290,38 @@ async function seedReviews() {
   console.log(`\n✨ Reviews seeding complete: ${successCount} added, ${errorCount} failed\n`);
 }
 
+// Seed sample approved translators
+async function seedTranslators() {
+  console.log('🧑‍💼 Seeding translator users...');
+  let successCount = 0;
+
+  for (const translator of SAMPLE_TRANSLATORS) {
+    const userDocRef = doc(db, 'users', translator.id);
+    await setDoc(userDocRef, {
+      ...translator,
+      createdAt: translator.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    successCount++;
+  }
+
+  console.log(`✨ Translators seeding complete: ${successCount} added\n`);
+}
+
+// Seed sample translator reviews
+async function seedTranslatorReviews() {
+  console.log('⭐ Seeding translator reviews...');
+  let successCount = 0;
+
+  for (const review of SAMPLE_TRANSLATOR_REVIEWS) {
+    const reviewDocRef = doc(db, 'translatorReviews', review.id);
+    await setDoc(reviewDocRef, review);
+    successCount++;
+  }
+
+  console.log(`✨ Translator reviews seeding complete: ${successCount} added\n`);
+}
+
 /**
  * Main seeding function - runs everything
  */
@@ -193,6 +339,10 @@ async function seedDatabase() {
 
     // Then seed reviews
     await seedReviews();
+
+    // Seed translator demo data
+    await seedTranslators();
+    await seedTranslatorReviews();
 
     console.log('\n🎉 DATABASE SEEDING COMPLETE! 🎉');
     console.log('\nNext steps:');
@@ -220,4 +370,4 @@ if (require.main === module) {
 }
 
 // Export for use in app
-module.exports = { seedDatabase, seedWorkshops, seedReviews };
+module.exports = { seedDatabase, seedWorkshops, seedReviews, seedTranslators, seedTranslatorReviews };

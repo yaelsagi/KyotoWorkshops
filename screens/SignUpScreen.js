@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
@@ -12,6 +11,8 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
+import FormInput from '../components/FormInput';
+import PasswordInput from '../components/PasswordInput';
 import { signUpWithEmail } from '../services/authService';
 import { getPasswordValidationError, PASSWORD_REQUIREMENTS_TEXT } from '../utils/passwordValidation';
 
@@ -81,52 +82,40 @@ export default function SignUpScreen({ navigation, route }) {
         </View>
 
         <View style={styles.form}>
-          <TextInput
-            style={styles.input}
+          <FormInput
             placeholder="Display Name *"
-            placeholderTextColor="#999"
             value={displayName}
             onChangeText={setDisplayName}
             autoCapitalize="words"
             autoComplete="name"
-            editable={!loading}
+            disabled={loading}
           />
 
-          <TextInput
-            style={styles.input}
+          <FormInput
             placeholder="Email *"
-            placeholderTextColor="#999"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
-            editable={!loading}
+            disabled={loading}
           />
 
-          <TextInput
-            style={styles.input}
+          <PasswordInput
             placeholder="Password *"
-            placeholderTextColor="#999"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
             autoComplete="password-new"
-            editable={!loading}
+            disabled={loading}
           />
           <Text style={styles.helperText}>{PASSWORD_REQUIREMENTS_TEXT}</Text>
 
-          <TextInput
-            style={styles.input}
+          <PasswordInput
             placeholder="Confirm Password *"
-            placeholderTextColor="#999"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
-            secureTextEntry
-            autoCapitalize="none"
             autoComplete="password-new"
-            editable={!loading}
+            disabled={loading}
           />
 
           <TouchableOpacity
@@ -182,15 +171,6 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
-  },
-  input: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
   },
   helperText: {
     fontSize: 13,

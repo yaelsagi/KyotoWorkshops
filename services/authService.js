@@ -14,6 +14,7 @@ import {
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebase';
 import { getPasswordValidationError } from '../utils/passwordValidation';
+import { DEFAULT_TRANSLATOR_APPLICATION, DEFAULT_TRANSLATOR_PROFILE } from '../constants/translatorOptions';
 
 /**
  * Create a new user account with email, password, and display name
@@ -46,14 +47,17 @@ export async function signUpWithEmail(email, password, displayName) {
     await setDoc(doc(db, 'users', user.uid), {
       displayName: displayName.trim(),
       email: user.email,
+      photoURL: null,
       roles: {
+        admin: false,
         host: false,
         translator: false,
       },
-      translatorApplicationStatus: 'none',
+      translatorApplication: DEFAULT_TRANSLATOR_APPLICATION,
+      translatorProfile: DEFAULT_TRANSLATOR_PROFILE,
       languages: [],
-      photoURL: null, // profile photo will be added later
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     });
 
     return user;

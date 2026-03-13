@@ -1,17 +1,19 @@
 // components/WorkshopMapMarker.js
 import React from "react";
 import { Marker } from "react-native-maps";
+import { COLORS } from "../styles/colors";
 
 const WorkshopMapMarker = React.memo(function WorkshopMapMarker({
   workshop,
   saved,
   onSelect,
 }) {
+  // Set pin color by save and top state
   const pinColor = saved
-    ? "#C1121F"          // red when saved
+    ? COLORS.favourite
     : workshop.isTop
-    ? "#B08A2E"          // gold for top workshops
-    : "#7A5C3D";         // default brown
+    ? COLORS.topWorkshop
+    : COLORS.defaultMapPin;
 
   return (
     <Marker
@@ -28,20 +30,3 @@ const WorkshopMapMarker = React.memo(function WorkshopMapMarker({
 });
 
 export default WorkshopMapMarker;
-
-
-
-// If You REALLY Want Bigger Saved Pins
-
-// There is one stable way:
-
-// Instead of animating a child View, use:
-// <Marker
-//   coordinate={{ ... }}
-//   anchor={{ x: 0.5, y: 0.5 }}
-// >
-//   <Image
-//     source={saved ? require("../assets/pin_saved.png") : require("../assets/pin_normal.png")}
-//     style={{ width: saved ? 34 : 26, height: saved ? 34 : 26 }}
-//   />
-// </Marker>

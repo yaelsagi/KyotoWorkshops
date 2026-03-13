@@ -11,19 +11,22 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { CameraIcon, LockClosedIcon, PencilIcon, PlusIcon } from "react-native-heroicons/outline";
-
 import { fetchWorkshopsByOwner, deleteWorkshop } from "../services/workshopService";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
+import ScreenSpinner from "../components/ScreenSpinner";
+import EmptyState from "../components/EmptyState";
+import { COLORS } from "../styles/colors";
 
+// Map workshop status to display label, text color, and background color
 function getStatusMeta(status) {
   if (status === "approved") {
-    return { label: "Approved", color: "#0D7A3E", bg: "#E8F7EE" };
+    return { label: "Approved", color: COLORS.approved, bg: COLORS.approvedBackground };
   }
   if (status === "rejected") {
-    return { label: "Rejected", color: "#C1121F", bg: "#FFECEE" };
+    return { label: "Rejected", color: COLORS.danger, bg: COLORS.rejectedBackground };
   }
-  return { label: "Pending Review", color: "#8A6D1D", bg: "#FFF6DF" };
+  return { label: "Pending Review", color: COLORS.pending, bg: COLORS.pendingBackground };
 }
 
 export default function MyWorkshopsScreen({ navigation }) {
@@ -157,40 +160,32 @@ export default function MyWorkshopsScreen({ navigation }) {
   };
 
   if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
+    return <ScreenSpinner />;
   }
 
+  // Guest mode - require sign in
   if (!authUser) {
     return (
-      <View style={styles.centerContainer}>
-        <LockClosedIcon size={56} color="#DDD" style={styles.emptyIcon} />
-        <Text style={styles.emptyTitle}>Sign in required</Text>
-        <Text style={styles.emptyText}>
-          Sign in to create and manage your workshops
-        </Text>
-        <Pressable style={styles.authButton} onPress={() => navigation.navigate("Login")}>
-          <Text style={styles.authButtonText}>Sign In</Text>
-        </Pressable>
-      </View>
+      <EmptyState
+        icon={<LockClosedIcon size={56} color={COLORS.emptyStateIcon} />}
+        title="Sign in required"
+        message="Sign in to create and manage your workshops"
+        buttonLabel="Sign In"
+        onButtonPress={() => navigation.navigate("Login")}
+      />
     );
   }
 
+  // No workshops created yet
   if (workshops.length === 0) {
     return (
-      <View style={styles.centerContainer}>
-        <PencilIcon size={56} color="#DDD" style={styles.emptyIcon} />
-        <Text style={styles.emptyTitle}>No workshops yet</Text>
-        <Text style={styles.emptyText}>
-          Create your first workshop and submit it for admin review.
-        </Text>
-        <Pressable style={styles.createButton} onPress={() => navigation.navigate("CreateWorkshop")}>
-          <Text style={styles.createButtonText}>Create Workshop</Text>
-        </Pressable>
-      </View>
+      <EmptyState
+        icon={<PencilIcon size={56} color={COLORS.emptyStateIcon} />}
+        title="No workshops yet"
+        message="Create your first workshop and submit it for admin review"
+        buttonLabel="Create Workshop"
+        onButtonPress={() => navigation.navigate("CreateWorkshop")}
+      />
     );
   }
 
@@ -222,17 +217,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-  },
-  centerContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 30,
-    backgroundColor: "#FFFFFF",
-  },
-  loadingText: {
-    fontSize: 16,
-    color: "#666",
   },
   header: {
     paddingHorizontal: 18,
@@ -381,45 +365,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: "#C1121F",
-  },
-  emptyIcon: {
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#1F1F1F",
-    marginBottom: 10,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  authButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    backgroundColor: "#1F1F1F",
-    borderRadius: 12,
-  },
-  authButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#FFFFFF",
-  },
-  createButton: {
-    marginTop: 24,
-    backgroundColor: "#1F1F1F",
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  createButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#FFFFFF",
   },
   fab: {
     position: "absolute",
