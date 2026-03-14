@@ -214,7 +214,7 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
 
         const topMatches = matches.slice(0, 3);
         const buttons = topMatches.map((translator) => ({
-          text: `${translator.displayName} (${Number(translator.translatorProfile?.ratingAverage || 0).toFixed(1)}⭐)`,
+          text: `${translator.displayName} (Rating ${Number(translator.translatorProfile?.ratingAverage || 0).toFixed(1)})`,
           onPress: () => saveBooking(true, requestedLanguage, translator.id),
         }));
 

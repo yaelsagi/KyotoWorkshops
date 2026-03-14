@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { HeartIcon } from "react-native-heroicons/outline";
 import WorkshopCard from "../components/WorkshopCard";
 import ScreenSpinner from "../components/ScreenSpinner";
 import { useFavourites } from "../context/FavouritesContext";

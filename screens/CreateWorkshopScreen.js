@@ -11,6 +11,9 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -28,6 +31,7 @@ import {
   createWorkshop,
   updateWorkshop,
 } from "../services/workshopService";
+import KeyboardDoneAccessory from "../components/KeyboardDoneAccessory";
 
 // workshop duration options
 const DURATION_OPTIONS = [
@@ -45,6 +49,7 @@ const DURATION_OPTIONS = [
 const MAX_CATEGORIES = 3;
 const MIN_GALLERY_IMAGES = 3;
 const MAX_GALLERY_IMAGES = 10;
+const NUMERIC_INPUT_ACCESSORY_ID = "createWorkshopNumericAccessory";
 
 // Patterns for form validation
 const TITLE_PATTERN = /^[A-Za-z0-9 ]+$/;
@@ -426,10 +431,17 @@ export default function CreateWorkshopScreen({ navigation, route }) {
 
   return (
     <>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
       accessibilityLabel="Create workshop form"
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
     >
       <Text style={styles.pageTitle}>{isEditMode ? "Edit Workshop" : "Create Workshop"}</Text>
       <Text style={styles.pageSubtitle}>
@@ -519,7 +531,7 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           accessibilityHint="Optional. Use letters and numbers only. Symbols and dots are not allowed."
         />
         <Text style={styles.helperText}>
-          💡 Optional. Use letters and numbers only (no symbols or dots). Extra spaces are cleaned automatically.
+          Optional. Use letters and numbers only (no symbols or dots). Extra spaces are cleaned automatically.
         </Text>
         {customCategorySuggestionHasInvalidChars ? (
           <Text style={styles.errorText} accessibilityLiveRegion="polite">
@@ -600,7 +612,7 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           )}
         </View>
         <Text style={styles.helperText}>
-          📸 Show your workspace, materials, and finished pieces. Clear, bright
+          Show your workspace, materials, and finished pieces. Clear, bright
           photos help attract learners!
         </Text>
       </View>
@@ -639,6 +651,11 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           value={maxParticipants}
           onChangeText={setMaxParticipants}
           keyboardType="numeric"
+          returnKeyType="done"
+          onSubmitEditing={Keyboard.dismiss}
+          // Attach iOS keyboard accessory
+          // Android uses KeyboardAvoidingView, tap dismiss, and drag dismiss from this screen
+          inputAccessoryViewID={Platform.OS === "ios" ? NUMERIC_INPUT_ACCESSORY_ID : undefined}
           placeholderTextColor="#999"
           accessibilityLabel="Maximum participants"
           accessibilityHint="Enter the maximum number of participants"
@@ -706,7 +723,7 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           accessibilityHint="Describe what participants will learn and the workshop experience"
         />
         <Text style={styles.helperText}>
-          ✍️ Write 3-5 paragraphs. Include skill level, what you'll teach, the
+          Write 3-5 paragraphs. Include skill level, what you'll teach, the
           experience, and what participants will create
         </Text>
       </View>
@@ -729,7 +746,7 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           accessibilityHint="Optional. List tools, materials, and services included"
         />
         <Text style={styles.helperText}>
-          🎁 Be specific: "All pottery tools, 1kg of clay, glazing materials,
+          Be specific: "All pottery tools, 1kg of clay, glazing materials,
           tea and wagashi, kiln firing included"
         </Text>
       </View>
@@ -747,6 +764,11 @@ export default function CreateWorkshopScreen({ navigation, route }) {
           value={price}
           onChangeText={handlePriceChange}
           keyboardType="numeric"
+          returnKeyType="done"
+          onSubmitEditing={Keyboard.dismiss}
+          // Attach iOS keyboard accessory
+          // Android uses KeyboardAvoidingView, tap dismiss, and drag dismiss from this screen
+          inputAccessoryViewID={Platform.OS === "ios" ? NUMERIC_INPUT_ACCESSORY_ID : undefined}
           placeholderTextColor="#999"
           accessibilityLabel="Price per person in Japanese yen"
           accessibilityHint="Enter the workshop price in yen (numbers only, no dots)"
@@ -777,6 +799,9 @@ export default function CreateWorkshopScreen({ navigation, route }) {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+    <KeyboardDoneAccessory nativeID={NUMERIC_INPUT_ACCESSORY_ID} />
+    </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
     <Modal
       visible={Boolean(singleSelectPickerConfig)}
       animationType="slide"

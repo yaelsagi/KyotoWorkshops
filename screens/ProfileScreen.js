@@ -19,6 +19,8 @@ import {
   UserCircleIcon, 
   CameraIcon, 
   ShareIcon, 
+  GlobeAltIcon,
+  PaintBrushIcon,
   QuestionMarkCircleIcon, 
   ShieldCheckIcon, 
   InformationCircleIcon,
@@ -290,8 +292,6 @@ export default function ProfileScreen({ navigation }) {
       
       // Update the local user context so the UI shows the new photo immediately
       updateUser({ photoURL: freshUrl });
-
-      Alert.alert('Success', 'Profile photo updated');
     } catch (error) {
       console.error('Error uploading photo:', error);
       Alert.alert('Error', error.message || 'Could not upload photo. Please try again.');
@@ -463,7 +463,9 @@ export default function ProfileScreen({ navigation }) {
             </Text>
           </Pressable>
         </View>
-        <Text style={styles.userName}>{currentUser?.displayName || authUser?.displayName}</Text>
+        <Text style={styles.userName}>
+          {currentUser?.displayName || authUser?.displayName || authUser?.email?.split('@')[0] || 'User'}
+        </Text>
         <Text style={styles.userEmail}>{authUser?.email || 'user@example.com'}</Text>
       </View>
 
@@ -481,7 +483,7 @@ export default function ProfileScreen({ navigation }) {
             }
           }}
         >
-          <Text style={styles.statValue}>🌐</Text>
+          <GlobeAltIcon size={28} color={COLORS.primaryText} style={styles.statIcon} />
           <Text style={styles.statLabel}>
             {translatorButtonLabel}
           </Text>
@@ -494,7 +496,7 @@ export default function ProfileScreen({ navigation }) {
               : navigation.navigate("CreateWorkshop")
           }
         >
-          <Text style={styles.statValue}>🎨</Text>
+          <PaintBrushIcon size={28} color={COLORS.primaryText} style={styles.statIcon} />
           <Text style={styles.statLabel}>
             {isHostEnabled ? "Workshop Host Dashboard" : "Host a Workshop"}
           </Text>
@@ -646,6 +648,9 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#1F1F1F",
     marginBottom: 4,
+  },
+  statIcon: {
+    marginBottom: 8,
   },
   statLabel: {
     fontSize: 13,

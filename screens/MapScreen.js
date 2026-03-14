@@ -338,20 +338,24 @@ export default function MapScreen({ navigation }) {
           if (cardVisible) hideCard();
         }}
       >
-        {visibleWorkshops.map((w) => (
-          <WorkshopMapMarker
-            key={w.id}
-            workshop={w}
-            saved={isFavourited(w.id)}
-            onSelect={(workshop) => {
-              ignoreNextMapPressRef.current = true;
-              Keyboard.dismiss();
-              setSelected(workshop);
-              // Prefetch workshop images when marker is tapped (optimization for report)
-              prefetchWorkshopImages(workshop);
-            }}
-          />
-        ))}
+        {visibleWorkshops.map((w) => {
+          const isSaved = isFavourited(w.id);
+
+          return (
+            <WorkshopMapMarker
+              key={`${w.id}-${isSaved ? "saved" : "default"}`}
+              workshop={w}
+              saved={isSaved}
+              onSelect={(workshop) => {
+                ignoreNextMapPressRef.current = true;
+                Keyboard.dismiss();
+                setSelected(workshop);
+                // Prefetch workshop images when marker is tapped (optimization for report)
+                prefetchWorkshopImages(workshop);
+              }}
+            />
+          );
+        })}
       </MapView>
 
       {selected && cardVisible && (

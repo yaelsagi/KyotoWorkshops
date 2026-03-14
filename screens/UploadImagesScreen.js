@@ -88,8 +88,7 @@ export default function UploadImagesScreen() {
       }
 
       setUploadProgress('');
-      Alert.alert('Success', `${files.length} images uploaded!`);
-      
+
       // Reload images list
       await loadWorkshopImages(selectedWorkshop);
       

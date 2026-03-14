@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import FormInput from '../components/FormInput';
 import PasswordInput from '../components/PasswordInput';
@@ -68,6 +70,7 @@ export default function SignUpScreen({ navigation, route }) {
   };
 
   return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -75,6 +78,7 @@ export default function SignUpScreen({ navigation, route }) {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
       >
         <View style={styles.header}>
           <Text style={styles.title}>京都 Kyoto Workshops</Text>
@@ -142,6 +146,7 @@ export default function SignUpScreen({ navigation, route }) {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 }
 

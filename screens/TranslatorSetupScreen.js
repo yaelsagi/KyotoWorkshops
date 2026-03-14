@@ -8,6 +8,10 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
@@ -200,7 +204,16 @@ export default function TranslatorSetupScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+      >
         <Text style={styles.title}>Become a Translator</Text>
         <Text style={styles.subtitle}>Submit your translator application for admin review</Text>
 
@@ -357,6 +370,8 @@ export default function TranslatorSetupScreen({ navigation }) {
           {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Submit Application</Text>}
         </Pressable>
       </ScrollView>
+      </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }

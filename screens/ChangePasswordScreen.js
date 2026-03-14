@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PasswordInput from '../components/PasswordInput';
@@ -86,6 +88,7 @@ export default function ChangePasswordScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -93,6 +96,7 @@ export default function ChangePasswordScreen({ navigation }) {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         >
           {/* Screen header */}
           <View style={styles.header}>
@@ -174,6 +178,7 @@ export default function ChangePasswordScreen({ navigation }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }

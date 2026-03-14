@@ -19,7 +19,7 @@ export function AuthProvider({ children }) {
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          displayName: firebaseUser.displayName || 'Workshop Explorer',
+          displayName: firebaseUser.displayName || null,
         });
       } else {
         // User is signed out

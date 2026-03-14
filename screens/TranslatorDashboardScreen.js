@@ -8,12 +8,19 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { StarIcon } from "react-native-heroicons/outline";
 import { useUser } from "../context/UserContext";
 import { updateTranslatorProfile, fetchTranslatorReviews } from "../services/translatorService";
+import KeyboardDoneAccessory from "../components/KeyboardDoneAccessory";
 
 const DAY_OPTIONS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const NUMERIC_INPUT_ACCESSORY_ID = "translatorDashboardNumericAccessory";
 
 export default function TranslatorDashboardScreen() {
   const { currentUser, updateUser } = useUser();
@@ -107,7 +114,16 @@ export default function TranslatorDashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+      >
         <Text style={styles.title}>Translator Dashboard</Text>
         <Text style={styles.subtitle}>Manage your translator profile and availability</Text>
 
@@ -188,12 +204,20 @@ export default function TranslatorDashboardScreen() {
             onChangeText={(text) => setHourlyRateYen(text.replace(/[^0-9]/g, ""))}
             placeholder="e.g. 4500"
             keyboardType="numeric"
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
+            // Attach iOS keyboard accessory
+            // Android uses KeyboardAvoidingView, tap dismiss, and drag dismiss from this screen
+            inputAccessoryViewID={Platform.OS === "ios" ? NUMERIC_INPUT_ACCESSORY_ID : undefined}
           />
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ratings</Text>
-          <Text style={styles.metaValue}>Average: {(translatorProfile.ratingAverage || 0).toFixed(1)} ⭐</Text>
+          <View style={styles.ratingRow}>
+            <Text style={styles.metaValue}>Average: {(translatorProfile.ratingAverage || 0).toFixed(1)}</Text>
+            <StarIcon size={14} color="#B08A2E" style={styles.ratingIcon} />
+          </View>
           <Text style={styles.metaValue}>Reviews: {translatorProfile.ratingCount || 0}</Text>
           <Text style={styles.metaValue}>Completed jobs: {translatorProfile.completedJobs || 0}</Text>
 
@@ -204,7 +228,10 @@ export default function TranslatorDashboardScreen() {
           ) : (
             reviews.slice(0, 5).map((review) => (
               <View key={review.id} style={styles.reviewCard}>
-                <Text style={styles.reviewRating}>{review.rating} ⭐</Text>
+                <View style={styles.ratingRow}>
+                  <Text style={styles.reviewRating}>{review.rating}</Text>
+                  <StarIcon size={14} color="#B08A2E" style={styles.ratingIcon} />
+                </View>
                 <Text style={styles.reviewText}>{review.comment || "No comment"}</Text>
               </View>
             ))
@@ -220,6 +247,9 @@ export default function TranslatorDashboardScreen() {
           {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Save Dashboard</Text>}
         </Pressable>
       </ScrollView>
+      <KeyboardDoneAccessory nativeID={NUMERIC_INPUT_ACCESSORY_ID} />
+      </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }
@@ -268,6 +298,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#222",
     marginTop: 2,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+  },
+  ratingIcon: {
+    marginLeft: 4,
   },
   fieldLabel: {
     fontSize: 13,
