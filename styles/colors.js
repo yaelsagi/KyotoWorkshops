@@ -28,6 +28,10 @@ export const COLORS = {
     rating: "#B08A2E",             
     topWorkshop: "#B08A2E",        
 
+    // Image placeholders
+    imagePlaceholderIcon: "#8B7B6B",
+    imagePlaceholderBackground: "#F5F1E8",
+
     // Icons and helpers
     emptyStateIcon: "#DDD",
     defaultMapPin: "#7A5C3D",

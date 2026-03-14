@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { CameraIcon, HeartIcon } from 'react-native-heroicons/outline';
+import { COLORS } from '../styles/colors';
 
 export default function WorkshopCard({ workshop, onPress, onFavouriteToggle }) {
   // Track image loading state per card instance
@@ -42,7 +43,7 @@ export default function WorkshopCard({ workshop, onPress, onFavouriteToggle }) {
             />
           </>
         ) : (
-          <CameraIcon size={36} color="#8B7B6B" />
+          <CameraIcon size={36} color={COLORS.imagePlaceholderIcon} />
         )}
 
         {workshop.isTop && (
@@ -73,7 +74,7 @@ export default function WorkshopCard({ workshop, onPress, onFavouriteToggle }) {
               accessibilityRole="button"
               accessibilityLabel={`Remove ${workshop.title} from favourites`}
             >
-              <HeartIcon size={18} color="#C1121F" />
+              <HeartIcon size={18} color={COLORS.favourite} />
             </Pressable>
           )}
         </View>
@@ -91,9 +92,9 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 16,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#E6E2DA',
+    borderColor: COLORS.border,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
@@ -110,7 +111,7 @@ const styles = StyleSheet.create({
   cardImagePlaceholder: {
     width: '100%',
     height: 160,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: COLORS.imagePlaceholderBackground,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -132,18 +133,18 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1F1F1F',
+    color: COLORS.primaryText,
     marginBottom: 4,
   },
   cardCategory: {
     fontSize: 13,
-    color: '#666',
+    color: COLORS.secondaryText,
   },
   favouriteButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFF0F0',
+    backgroundColor: COLORS.dangerBackground,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 10,
@@ -156,12 +157,12 @@ const styles = StyleSheet.create({
   },
   cardLocation: {
     fontSize: 13,
-    color: '#666',
+    color: COLORS.secondaryText,
   },
   cardPrice: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F1F1F',
+    color: COLORS.primaryText,
   },
   topBadge: {
     position: 'absolute',
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
     right: 10,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderRadius: 20,
     ...Platform.select({
       ios: {
@@ -186,7 +187,7 @@ const styles = StyleSheet.create({
   topBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#1F1F1F',
+    color: COLORS.primaryText,
     letterSpacing: 0.3,
   },
 });

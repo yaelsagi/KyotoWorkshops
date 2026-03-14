@@ -102,7 +102,7 @@ export default function MyWorkshopsScreen({ navigation }) {
           />
         ) : (
           <View style={styles.cardImagePlaceholder}>
-            <CameraIcon size={32} color="#8B7B6B" />
+            <CameraIcon size={32} color={COLORS.imagePlaceholderIcon} />
           </View>
         )}
 
@@ -207,7 +207,7 @@ export default function MyWorkshopsScreen({ navigation }) {
       />
 
       <Pressable style={styles.fab} onPress={() => navigation.navigate("CreateWorkshop")}>
-        <PlusIcon size={24} color="#FFFFFF" />
+        <PlusIcon size={24} color={COLORS.white} />
       </Pressable>
     </View>
   );
@@ -216,25 +216,25 @@ export default function MyWorkshopsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
   },
   header: {
     paddingHorizontal: 18,
     paddingTop: Platform.OS === "ios" ? 60 : 20,
     paddingBottom: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: "#E6E2DA",
+    borderBottomColor: COLORS.border,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     marginBottom: 4,
   },
   headerCount: {
     fontSize: 14,
-    color: "#666",
+    color: COLORS.secondaryText,
   },
   list: {
     padding: 16,
@@ -242,9 +242,9 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 16,
     borderRadius: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: "#E6E2DA",
+    borderColor: COLORS.border,
     overflow: "hidden",
     ...Platform.select({
       ios: {
@@ -261,14 +261,14 @@ const styles = StyleSheet.create({
   cardImagePlaceholder: {
     width: "100%",
     height: 140,
-    backgroundColor: "#F5F1E8",
+    backgroundColor: COLORS.imagePlaceholderBackground,
     alignItems: "center",
     justifyContent: "center",
   },
   cardImage: {
     width: "100%",
     height: 140,
-    backgroundColor: "#F5F1E8",
+    backgroundColor: COLORS.imagePlaceholderBackground,
   },
   cardContent: {
     padding: 16,
@@ -283,13 +283,15 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: "#E8F4F8",
+    backgroundColor: COLORS.cardBackground,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     borderRadius: 8,
   },
   ownedBadgeText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#3498DB",
+    color: COLORS.primaryText,
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -303,17 +305,17 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     marginBottom: 4,
   },
   cardCategory: {
     fontSize: 14,
-    color: "#666",
+    color: COLORS.secondaryText,
     marginBottom: 12,
   },
   divider: {
     height: 1,
-    backgroundColor: "#E6E2DA",
+    backgroundColor: COLORS.border,
     marginBottom: 12,
   },
   infoRow: {
@@ -326,13 +328,13 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: "#888",
+    color: COLORS.secondaryText,
     marginBottom: 4,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
   },
   buttonRow: {
     flexDirection: "row",
@@ -343,28 +345,28 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#1F1F1F",
-    backgroundColor: "#1F1F1F",
+    borderColor: COLORS.primaryText,
+    backgroundColor: COLORS.primaryText,
     alignItems: "center",
   },
   editButtonText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: COLORS.white,
   },
   deleteButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E6E2DA",
-    backgroundColor: "#FFFFFF",
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
     alignItems: "center",
   },
   deleteButtonText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#C1121F",
+    color: COLORS.danger,
   },
   fab: {
     position: "absolute",
@@ -373,7 +375,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#1F1F1F",
+    backgroundColor: COLORS.primaryText,
     alignItems: "center",
     justifyContent: "center",
     elevation: 4,

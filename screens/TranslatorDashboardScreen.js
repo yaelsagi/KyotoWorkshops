@@ -17,7 +17,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StarIcon } from "react-native-heroicons/outline";
 import { useUser } from "../context/UserContext";
 import { updateTranslatorProfile, fetchTranslatorReviews } from "../services/translatorService";
-import KeyboardDoneAccessory from "../components/KeyboardDoneAccessory";
+import KeyboardDoneBar from "../components/KeyboardDoneBar";
+import { COLORS } from "../styles/colors";
 
 const DAY_OPTIONS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const NUMERIC_INPUT_ACCESSORY_ID = "translatorDashboardNumericAccessory";
@@ -216,7 +217,7 @@ export default function TranslatorDashboardScreen() {
           <Text style={styles.sectionTitle}>Ratings</Text>
           <View style={styles.ratingRow}>
             <Text style={styles.metaValue}>Average: {(translatorProfile.ratingAverage || 0).toFixed(1)}</Text>
-            <StarIcon size={14} color="#B08A2E" style={styles.ratingIcon} />
+            <StarIcon size={14} color={COLORS.rating} style={styles.ratingIcon} />
           </View>
           <Text style={styles.metaValue}>Reviews: {translatorProfile.ratingCount || 0}</Text>
           <Text style={styles.metaValue}>Completed jobs: {translatorProfile.completedJobs || 0}</Text>
@@ -230,7 +231,7 @@ export default function TranslatorDashboardScreen() {
               <View key={review.id} style={styles.reviewCard}>
                 <View style={styles.ratingRow}>
                   <Text style={styles.reviewRating}>{review.rating}</Text>
-                  <StarIcon size={14} color="#B08A2E" style={styles.ratingIcon} />
+                  <StarIcon size={14} color={COLORS.rating} style={styles.ratingIcon} />
                 </View>
                 <Text style={styles.reviewText}>{review.comment || "No comment"}</Text>
               </View>
@@ -247,7 +248,7 @@ export default function TranslatorDashboardScreen() {
           {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Save Dashboard</Text>}
         </Pressable>
       </ScrollView>
-      <KeyboardDoneAccessory nativeID={NUMERIC_INPUT_ACCESSORY_ID} />
+      <KeyboardDoneBar nativeID={NUMERIC_INPUT_ACCESSORY_ID} />
       </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
     </SafeAreaView>
@@ -257,7 +258,7 @@ export default function TranslatorDashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
   },
   content: {
     padding: 16,
@@ -266,37 +267,37 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
   },
   subtitle: {
     marginTop: 8,
     marginBottom: 14,
     fontSize: 14,
-    color: "#666",
+    color: COLORS.secondaryText,
   },
   section: {
     marginTop: 14,
     borderWidth: 1,
-    borderColor: "#E6E2DA",
+    borderColor: COLORS.border,
     borderRadius: 12,
-    backgroundColor: "#FBFAF7",
+    backgroundColor: COLORS.cardBackground,
     padding: 12,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     marginBottom: 8,
   },
   metaLabel: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#444",
+    color: COLORS.secondaryText,
     marginTop: 6,
   },
   metaValue: {
     fontSize: 13,
-    color: "#222",
+    color: COLORS.primaryText,
     marginTop: 2,
   },
   ratingRow: {
@@ -310,18 +311,18 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#444",
+    color: COLORS.secondaryText,
     marginTop: 6,
     marginBottom: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#E6E2DA",
-    backgroundColor: "#FFFFFF",
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
   },
   row: {
     flexDirection: "row",
@@ -334,28 +335,28 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderWidth: 1,
-    borderColor: "#D8D2C5",
+    borderColor: COLORS.border,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
   },
   chipSelected: {
-    backgroundColor: "#1F1F1F",
-    borderColor: "#1F1F1F",
+    backgroundColor: COLORS.primaryText,
+    borderColor: COLORS.primaryText,
   },
   chipText: {
     fontSize: 12,
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     fontWeight: "600",
   },
   chipTextSelected: {
-    color: "#FFFFFF",
+    color: COLORS.white,
   },
   secondaryButton: {
     marginTop: 10,
     borderWidth: 1,
-    borderColor: "#1F1F1F",
+    borderColor: COLORS.primaryText,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: "center",
@@ -363,65 +364,65 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
   },
   slotRow: {
     marginTop: 8,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E6E2DA",
+    borderColor: COLORS.border,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
   slotText: {
     fontSize: 12,
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     fontWeight: "600",
   },
   removeText: {
     fontSize: 12,
-    color: "#C1121F",
+    color: COLORS.danger,
     fontWeight: "700",
   },
   reviewCard: {
     marginTop: 8,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: "#E6E2DA",
+    borderColor: COLORS.border,
     borderRadius: 10,
     padding: 10,
   },
   reviewRating: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
   },
   reviewText: {
     marginTop: 4,
     fontSize: 12,
-    color: "#444",
+    color: COLORS.secondaryText,
   },
   helperText: {
     marginTop: 6,
     fontSize: 12,
-    color: "#666",
+    color: COLORS.secondaryText,
   },
   primaryButton: {
     marginTop: 18,
-    backgroundColor: "#1F1F1F",
+    backgroundColor: COLORS.primaryText,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
   },
   primaryButtonDisabled: {
-    backgroundColor: "#999",
+    backgroundColor: COLORS.tertiaryText,
   },
   primaryButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.white,
     fontSize: 15,
     fontWeight: "700",
   },

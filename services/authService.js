@@ -16,12 +16,9 @@ import { auth, db } from '../firebase/firebase';
 import { getPasswordValidationError } from '../utils/passwordValidation';
 import { DEFAULT_TRANSLATOR_APPLICATION, DEFAULT_TRANSLATOR_PROFILE } from '../constants/translatorOptions';
 
-/**
- * Create a new user account with email, password, and display name
- * All three fields are required to ensure proper user identification
- */
+// Create a new user account with email, password, and display name
 export async function signUpWithEmail(email, password, displayName) {
-  // Make sure we have all the required information before proceeding
+  // Validate required fields
   if (!email || !password) {
     throw new Error('Email and password are required');
   }
@@ -43,7 +40,7 @@ export async function signUpWithEmail(email, password, displayName) {
     // Update the user's display name in Firebase Auth
     await updateProfile(user, { displayName: displayName.trim() });
 
-    // Create a detailed user profile document in Firestore with the chosen display name
+    // Create user profile in Firestore
     await setDoc(doc(db, 'users', user.uid), {
       displayName: displayName.trim(),
       email: user.email,
@@ -226,13 +223,8 @@ export function getCurrentAuthUser() {
   return auth.currentUser;
 }
 
-/**
- * Delete the current user's account completely
- * Removes: user document from Firestore, Firebase Auth user account
- * Note: User deletes own profile photos separately from storageService
- * 
- * @param userId - The user's UID
- */
+// Delete the current user's account (Firestore doc + Auth user)
+// Profile photos must be deleted separately via storageService before calling this
 export async function deleteUserAccount(userId) {
   if (!userId) {
     throw new Error('User ID is required');
@@ -249,12 +241,9 @@ export async function deleteUserAccount(userId) {
     // Delete the user document from Firestore first
     const userDoc = doc(db, 'users', userId);
     await deleteDoc(userDoc);
-    console.log(`User document deleted from Firestore: ${userId}`);
 
-    // Delete the Firebase Auth account
-    // This must be done last because deleteUser will sign the user out
+    // Must be last — deleteUser signs the user out immediately
     await deleteUser(currentUser);
-    console.log(`Firebase Auth user deleted: ${userId}`);
 
     return true;
   } catch (error) {

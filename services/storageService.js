@@ -3,24 +3,14 @@ import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { storage, db } from '../firebase/firebase';
 
 /**
- * Firebase Storage Service (Optional)
- * 
- * Workshop images were uploaded manually via Firebase Console.
- * These functions are available for future use cases:
- * - User-generated content uploads
- * - Dynamic image management
- * - Host self-service image updates
+ * Firebase Storage Service
+ *
+ * Handles image uploads for workshops, user profiles, and translator documents.
+ * Workshop images were seeded manually via Firebase Console —
+ * these functions are used for user-generated uploads.
  */
 
-/**
- * Upload image file to Firebase Storage under workshop folder
- * 
- * @param workshopId - e.g., "workshop_tea_ceremony"
- * @param imageFile - File object from document picker (has uri, name, type, size)
- * @returns {Promise<string>} - Download URL of uploaded image
- * 
- * Example: "workshop-images/workshop_tea_ceremony/image_1709734800000.jpg"
- */
+// Upload a single image to a workshop's storage folder, returns its download URL
 export async function uploadWorkshopImage(workshopId, imageFile) {
   if (!workshopId) {
     throw new Error('Workshop ID required');
@@ -45,11 +35,8 @@ export async function uploadWorkshopImage(workshopId, imageFile) {
     
     // Upload to Storage
     const snapshot = await uploadBytes(storageRef, blob);
-    console.log(`Image uploaded to: ${snapshot.fullPath}`);
 
-    // Get download URL
     const downloadUrl = await getDownloadURL(snapshot.ref);
-    console.log(`Download URL: ${downloadUrl}`);
 
     return downloadUrl;
 
@@ -59,13 +46,7 @@ export async function uploadWorkshopImage(workshopId, imageFile) {
   }
 }
 
-/**
- * Upload multiple images and save URLs to Firestore workshop document
- * 
- * @param workshopId - e.g., "workshop_tea_ceremony"
- * @param imageFiles - Array of File objects
- * @returns {Promise<Array>} - Array of download URLs
- */
+// Upload multiple images and save all URLs to the workshop's Firestore document
 export async function uploadMultipleImagesToWorkshop(workshopId, imageFiles) {
   if (!workshopId) {
     throw new Error('Workshop ID required');
@@ -81,7 +62,6 @@ export async function uploadMultipleImagesToWorkshop(workshopId, imageFiles) {
     // Upload each image
     for (let i = 0; i < imageFiles.length; i++) {
       try {
-        console.log(`Uploading image ${i + 1}/${imageFiles.length}...`);
         const downloadUrl = await uploadWorkshopImage(workshopId, imageFiles[i]);
         uploadedUrls.push(downloadUrl);
       } catch (error) {
@@ -92,7 +72,6 @@ export async function uploadMultipleImagesToWorkshop(workshopId, imageFiles) {
     // If at least one uploaded, save to Firestore
     if (uploadedUrls.length > 0) {
       await updateWorkshopImages(workshopId, uploadedUrls);
-      console.log(`Successfully uploaded ${uploadedUrls.length} images`);
     }
 
     // Warn about any failures
@@ -108,13 +87,7 @@ export async function uploadMultipleImagesToWorkshop(workshopId, imageFiles) {
   }
 }
 
-/**
- * Save image URLs to Firestore workshop document
- * Adds URLs to existing "images" array (doesn't replace, just appends)
- * 
- * @param workshopId - e.g., "workshop_tea_ceremony"
- * @param imageUrls - Array of download URLs to save
- */
+// Append image URLs to a workshop's Firestore document (does not replace existing)
 export async function updateWorkshopImages(workshopId, imageUrls) {
   if (!workshopId) {
     throw new Error('Workshop ID required');
@@ -135,7 +108,6 @@ export async function updateWorkshopImages(workshopId, imageUrls) {
       });
     }
 
-    console.log(`Saved ${imageUrls.length} image URLs to workshop ${workshopId}`);
     return true;
 
   } catch (error) {
@@ -144,13 +116,7 @@ export async function updateWorkshopImages(workshopId, imageUrls) {
   }
 }
 
-/**
- * Get all images for a workshop from Storage
- * Useful for listing what's already uploaded
- * 
- * @param workshopId - e.g., "workshop_tea_ceremony"
- * @returns {Promise<Array>} - Array of image filenames
- */
+// List all image filenames in a workshop's storage folder
 export async function listWorkshopImages(workshopId) {
   if (!workshopId) {
     throw new Error('Workshop ID required');
@@ -161,8 +127,6 @@ export async function listWorkshopImages(workshopId) {
     const result = await listAll(workshopFolder);
     
     const imageNames = result.items.map(itemRef => itemRef.name);
-    console.log(`Found ${imageNames.length} images in ${workshopId}`);
-    
     return imageNames;
 
   } catch (error) {
@@ -171,12 +135,7 @@ export async function listWorkshopImages(workshopId) {
   }
 }
 
-/**
- * Delete an image from Storage
- * 
- * @param workshopId - e.g., "workshop_tea_ceremony"
- * @param imageName - filename e.g., "image_1709734800000_abc123.jpg"
- */
+// Delete a specific image from a workshop's storage folder
 export async function deleteWorkshopImage(workshopId, imageName) {
   if (!workshopId || !imageName) {
     throw new Error('Workshop ID and image name required');
@@ -185,7 +144,6 @@ export async function deleteWorkshopImage(workshopId, imageName) {
   try {
     const imageRef = ref(storage, `workshop-images/${workshopId}/${imageName}`);
     await deleteObject(imageRef);
-    console.log(`Deleted image: ${imageName}`);
     return true;
 
   } catch (error) {
@@ -194,13 +152,7 @@ export async function deleteWorkshopImage(workshopId, imageName) {
   }
 }
 
-/**
- * Get download URL for a specific image
- * Useful if you have the storage path and need the URL
- * 
- * @param workshopId - e.g., "workshop_tea_ceremony"
- * @param imageName - filename e.g., "image_1709734800000_abc123.jpg"
- */
+// Get the download URL for a specific image in a workshop's folder
 export async function getWorkshopImageUrl(workshopId, imageName) {
   if (!workshopId || !imageName) {
     throw new Error('Workshop ID and image name required');
@@ -217,14 +169,7 @@ export async function getWorkshopImageUrl(workshopId, imageName) {
   }
 }
 
-/**
- * Upload a user's profile photo to Firebase Storage
- * Stores photos in user-photos/{userId}/profile.jpg
- * 
- * @param userId - The user ID from Firebase Auth
- * @param imageFile - Image file object with uri property from ImagePicker
- * @returns {Promise<string>} - Download URL of the uploaded profile photo
- */
+// Upload or replace a user's profile photo
 export async function uploadUserProfilePhoto(userId, imageFile) {
   if (!userId) {
     throw new Error('User ID is required to upload profile photo');
@@ -236,22 +181,15 @@ export async function uploadUserProfilePhoto(userId, imageFile) {
   try {
     // Use a consistent filename so new uploads replace old ones
     const filename = 'profile.jpg';
-    
-    // Create the storage path for this user's profile photo
     const storagePath = `user-photos/${userId}/${filename}`;
     const storageRef = ref(storage, storagePath);
 
-    // Convert the image URI to a blob so we can upload it
+    // Convert URI to blob for upload
     const response = await fetch(imageFile.uri);
     const blob = await response.blob();
-    
-    // Upload the image to Firebase Storage
-    const snapshot = await uploadBytes(storageRef, blob);
-    console.log(`Profile photo uploaded to: ${snapshot.fullPath}`);
 
-    // Get the public download URL for the uploaded image
+    const snapshot = await uploadBytes(storageRef, blob);
     const downloadUrl = await getDownloadURL(snapshot.ref);
-    console.log(`Profile photo URL: ${downloadUrl}`);
 
     return downloadUrl;
 
@@ -261,11 +199,7 @@ export async function uploadUserProfilePhoto(userId, imageFile) {
   }
 }
 
-/**
- * Delete a user's profile photo from Firebase Storage
- * 
- * @param userId - The user ID from Firebase Auth
- */
+// Delete a user's profile photo from storage
 export async function deleteUserProfilePhoto(userId) {
   if (!userId) {
     throw new Error('User ID is required to delete profile photo');
@@ -277,13 +211,10 @@ export async function deleteUserProfilePhoto(userId) {
     const imageRef = ref(storage, storagePath);
     
     await deleteObject(imageRef);
-    console.log(`Deleted profile photo for user: ${userId}`);
     return true;
 
   } catch (error) {
-    // If the photo doesn't exist, that's okay - just log it
     if (error.code === 'storage/object-not-found') {
-      console.log('No profile photo to delete');
       return true;
     }
     console.error('Failed to delete profile photo:', error);
@@ -291,39 +222,28 @@ export async function deleteUserProfilePhoto(userId) {
   }
 }
 
-/**
- * Delete all files in a user's photo folder from Firebase Storage
- * Used during account deletion to clean up all user photos
- * 
- * @param userId - The user ID from Firebase Auth
- */
+// Delete all files in a user's photo folder (called before account deletion)
 export async function deleteUserPhotoFolder(userId) {
   if (!userId) {
     throw new Error('User ID is required');
   }
 
   try {
-    // List all files in the user's photo folder
     const userPhotoFolder = ref(storage, `user-photos/${userId}`);
     const result = await listAll(userPhotoFolder);
-    
-    // Delete each file in the folder
+
     for (const fileRef of result.items) {
       try {
         await deleteObject(fileRef);
-        console.log(`Deleted file: ${fileRef.name}`);
       } catch (error) {
         console.warn(`Failed to delete file ${fileRef.name}:`, error);
       }
     }
-    
-    console.log(`Deleted all photos for user: ${userId}`);
+
     return true;
 
   } catch (error) {
-    // If folder doesn't exist, that's fine
     if (error.code === 'storage/object-not-found') {
-      console.log('User photo folder does not exist');
       return true;
     }
     console.error('Failed to delete user photo folder:', error);

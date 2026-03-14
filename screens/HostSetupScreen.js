@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { PencilIcon } from "react-native-heroicons/outline";
 import { useUser } from "../context/UserContext";
+import { COLORS } from "../styles/colors";
 
 export default function HostSetupScreen({ navigation }) {
   const { currentUser } = useUser();
@@ -9,7 +10,7 @@ export default function HostSetupScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <PencilIcon size={48} color="#1F1F1F" />
+      <PencilIcon size={48} color={COLORS.primaryText} />
       <Text style={styles.title}>Create a workshop</Text>
       <Text style={styles.description}>
         {isHost
@@ -32,7 +33,7 @@ export default function HostSetupScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
@@ -41,24 +42,24 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 24,
     fontWeight: "800",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
   },
   description: {
     marginTop: 10,
     fontSize: 14,
-    color: "#666",
+    color: COLORS.secondaryText,
     textAlign: "center",
     lineHeight: 21,
     marginBottom: 24,
   },
   primaryButton: {
-    backgroundColor: "#1F1F1F",
+    backgroundColor: COLORS.primaryText,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 10,
   },
   primaryButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.white,
     fontSize: 15,
     fontWeight: "700",
   },

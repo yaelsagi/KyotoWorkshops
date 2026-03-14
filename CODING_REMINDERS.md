@@ -12,6 +12,7 @@ Use these rules for all code changes.
 - Keep changes consistent with nearby code
 - Do not rewrite unrelated code
 - Keep edits focused on the requested task
+- This project is JavaScript — write `.js` / `.jsx` files. Do not introduce TypeScript unless the project is configured for it
 
 ## 3. Write readable code
 - Use clear, practical names
@@ -23,6 +24,8 @@ Use these rules for all code changes.
 - Reuse existing components, services, and types when appropriate
 - Do not duplicate logic or UI patterns without a good reason
 - Extract shared code only when reuse is real and improves clarity
+- Name reusable components based on their purpose — avoid vague names like `Helper`, `Wrapper`, or `Container`
+- Keep reusable components small and focused on one job
 
 ## 5. Keep logic in the right place
 - Keep business logic out of presentational UI when reasonably possible
@@ -34,30 +37,39 @@ Use these rules for all code changes.
 - Prefer explicit, reliable types
 - Avoid `any` unless absolutely necessary
 - Update types properly instead of bypassing errors
+- In JavaScript React components, define expected props with PropTypes
+- Mark required props as `.isRequired`
 
-## 7. Avoid fragile fixes
+## 7. Platform-specific code
+- Guard platform-specific APIs with an explicit platform check
+- Only use platform-specific code when genuinely needed
+- Provide sensible behaviour for the other platform — do not leave it broken or silently ignored
+- Do not imply iOS and Android behave identically when they do not
+
+## 8. Avoid fragile fixes
 - Do not use hardcoded hacks, unnecessary timeouts, or workaround-heavy patches
 - Do not silence warnings without understanding them
 - Prefer solutions that will still make sense later
 
-## 8. Handle real states
+## 9. Handle real states
 - Handle loading, empty, and error states for async UI
 - Validate user input where needed
 - Do not assume API data is always complete or valid
 - Fail gracefully
 
-## 9. Comments
+## 10. Comments
 - Follow `COMMENT_STYLE_GUIDE.md`
+- use colors from colors.js file, try not to add new ones. if you have to, add it to the colors.js
 - Keep comments short, natural, and useful
 - Put comments above the code they describe
 - Do not comment obvious code
 
-## 10. Writing style
+## 11. Writing style
 - Write like a human
 - Keep wording clear, simple, and natural
 - Avoid AI-sounding phrasing in code comments, UI text, and explanations
 
-## 11. Before finishing
+## 12. Before finishing
 Quickly check:
 - Is this simple?
 - Is this readable?
@@ -115,6 +127,8 @@ Use these rules for all UI work.
 - Maintain readable contrast
 - Do not rely on colour alone for meaning
 - Make interactive elements obviously interactive
+- Add `accessibilityRole` to interactive elements
+- Use natural labels that match the user action — prefer wording like "Done editing" over technical descriptions
 
 ## 9. Inline styling
 - Avoid large inline style blocks unless the file already uses that pattern

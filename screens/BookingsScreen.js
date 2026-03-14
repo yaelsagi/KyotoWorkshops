@@ -26,14 +26,14 @@ export default function BookingsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
 
   const loadBookings = useCallback(async () => {
-    if (!currentUser?.id) {
+    if (!currentUser?.uid) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
-      const data = await fetchUserBookings(currentUser.id);
+      const data = await fetchUserBookings(currentUser.uid);
       setBookings(data);
     } catch (err) {
       console.log("Error loading bookings:", err);
@@ -94,7 +94,7 @@ export default function BookingsScreen({ navigation }) {
         />
       ) : (
         <View style={styles.cardImagePlaceholder}>
-          <CameraIcon size={32} color="#8B7B6B" />
+          <CameraIcon size={32} color={COLORS.imagePlaceholderIcon} />
         </View>
       )}
       
@@ -195,25 +195,25 @@ export default function BookingsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
   },
   header: {
     paddingHorizontal: 18,
     paddingTop: 16,
     paddingBottom: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: "#E6E2DA",
+    borderBottomColor: COLORS.border,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     marginBottom: 4,
   },
   headerCount: {
     fontSize: 14,
-    color: "#666",
+    color: COLORS.secondaryText,
   },
   list: {
     padding: 16,
@@ -221,9 +221,9 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 16,
     borderRadius: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: "#E6E2DA",
+    borderColor: COLORS.border,
     overflow: "hidden",
     ...Platform.select({
       ios: {
@@ -240,14 +240,14 @@ const styles = StyleSheet.create({
   cardImagePlaceholder: {
     width: "100%",
     height: 140,
-    backgroundColor: "#F5F1E8",
+    backgroundColor: COLORS.imagePlaceholderBackground,
     alignItems: "center",
     justifyContent: "center",
   },
   cardImage: {
     width: "100%",
     height: 140,
-    backgroundColor: "#F5F1E8",
+    backgroundColor: COLORS.imagePlaceholderBackground,
   },
   cardImageText: {
     fontSize: 32,
@@ -259,29 +259,29 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: "#E7F5EB",
+    backgroundColor: COLORS.approvedBackground,
     borderRadius: 8,
     marginBottom: 12,
   },
   bookedBadgeText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#4A9D5F",
+    color: COLORS.approved,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     marginBottom: 4,
   },
   cardCategory: {
     fontSize: 14,
-    color: "#666",
+    color: COLORS.secondaryText,
     marginBottom: 12,
   },
   divider: {
     height: 1,
-    backgroundColor: "#E6E2DA",
+    backgroundColor: COLORS.border,
     marginBottom: 12,
   },
   infoRow: {
@@ -294,13 +294,13 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: "#888",
+    color: COLORS.secondaryText,
     marginBottom: 4,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
   },
   dateRow: {
     flexDirection: "row",
@@ -310,24 +310,24 @@ const styles = StyleSheet.create({
   },
   dateLabel: {
     fontSize: 13,
-    color: "#666",
+    color: COLORS.secondaryText,
   },
   dateValue: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
   },
   cancelButton: {
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E6E2DA",
-    backgroundColor: "#FFFFFF",
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
     alignItems: "center",
   },
   cancelButtonText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#C1121F",
+    color: COLORS.danger,
   },
 });

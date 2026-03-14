@@ -31,7 +31,7 @@ import {
   createWorkshop,
   updateWorkshop,
 } from "../services/workshopService";
-import KeyboardDoneAccessory from "../components/KeyboardDoneAccessory";
+import KeyboardDoneBar from "../components/KeyboardDoneBar";
 
 // workshop duration options
 const DURATION_OPTIONS = [
@@ -799,7 +799,7 @@ export default function CreateWorkshopScreen({ navigation, route }) {
 
       <View style={{ height: 40 }} />
     </ScrollView>
-    <KeyboardDoneAccessory nativeID={NUMERIC_INPUT_ACCESSORY_ID} />
+    <KeyboardDoneBar nativeID={NUMERIC_INPUT_ACCESSORY_ID} />
     </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
     <Modal

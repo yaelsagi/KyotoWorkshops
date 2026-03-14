@@ -16,6 +16,7 @@ import {
 import FormInput from '../components/FormInput';
 import PasswordInput from '../components/PasswordInput';
 import { signInWithEmail } from '../services/authService';
+import { COLORS } from '../styles/colors';
 
 export default function LoginScreen({ navigation, route }) {
   const [email, setEmail] = useState('');
@@ -90,7 +91,7 @@ export default function LoginScreen({ navigation, route }) {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={COLORS.white} />
             ) : (
               <Text style={styles.buttonText}>Sign In</Text>
             )}
@@ -120,7 +121,7 @@ export default function LoginScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
   },
   scrollContent: {
     flexGrow: 1,
@@ -134,28 +135,28 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: COLORS.primaryText,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
-    color: '#7f8c8d',
+    color: COLORS.secondaryText,
   },
   form: {
     width: '100%',
   },
   button: {
-    backgroundColor: '#3498db',
+    backgroundColor: COLORS.primaryText,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
   },
   buttonDisabled: {
-    backgroundColor: '#95a5a6',
+    backgroundColor: COLORS.tertiaryText,
   },
   buttonText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -165,10 +166,10 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 14,
-    color: '#7f8c8d',
+    color: COLORS.secondaryText,
   },
   linkTextBold: {
-    color: '#3498db',
+    color: COLORS.primaryText,
     fontWeight: '600',
   },
 });

@@ -1,23 +1,5 @@
-// screens/WorkshopDetailsScreen.js
-// Detailed workshop view with cover image, info, gallery, reviews, and booking
-//
-// Image Loading Optimization:
-// - Cover image uses expo-image with cachePolicy="disk"
-// - Gallery images loaded via PictureCard component (also uses disk caching)
-// - Loading state tracked separately for cover image (loadingCoverImage state)
-// - ActivityIndicator spinner shown while cover image downloads
-//
-// Performance Enhancements:
-// - Images prefetched when selected from map (MapScreen calls prefetchWorkshopImages)
-// - Prefetch runs in background when user taps marker - loads images before navigating here
-// - Result: Cover image displays instantly when screen opens (no waiting)
-// - All images cached on device after first view (<100ms on repeat visits)
-//
-// Data Loading:
-// - Reviews fetched with AsyncStorage fallback (offline support)
-// - Wikipedia content fetched asynchronously (cultural context)
-// - Workshop images queried from Firebase Storage paths
-// - All data loads in parallel for better perceived performance
+// Detailed workshop view — images, reviews, booking, and translator matching
+// Images are prefetched when navigating from the map for near-instant loading
 
 import React, { useState, useEffect, useCallback } from "react";
 import { 
@@ -168,7 +150,7 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
       try {
         const bookingData = {
           workshopId: workshop.id,
-          userId: currentUser.id,
+          userId: currentUser.uid,
           status: "pending",
           translatorRequested,
           requestedLanguage,

@@ -17,6 +17,7 @@ import FormInput from '../components/FormInput';
 import PasswordInput from '../components/PasswordInput';
 import { signUpWithEmail } from '../services/authService';
 import { getPasswordValidationError, PASSWORD_REQUIREMENTS_TEXT } from '../utils/passwordValidation';
+import { COLORS } from '../styles/colors';
 
 export default function SignUpScreen({ navigation, route }) {
   const [displayName, setDisplayName] = useState('');
@@ -128,7 +129,7 @@ export default function SignUpScreen({ navigation, route }) {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={COLORS.white} />
             ) : (
               <Text style={styles.buttonText}>Create Account</Text>
             )}
@@ -153,7 +154,7 @@ export default function SignUpScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
   },
   scrollContent: {
     flexGrow: 1,
@@ -167,35 +168,35 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: COLORS.primaryText,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
-    color: '#7f8c8d',
+    color: COLORS.secondaryText,
   },
   form: {
     width: '100%',
   },
   helperText: {
     fontSize: 13,
-    color: '#666',
+    color: COLORS.secondaryText,
     marginTop: -2,
     marginBottom: 16,
     lineHeight: 18,
   },
   button: {
-    backgroundColor: '#2ecc71',
+    backgroundColor: COLORS.primaryText,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
   },
   buttonDisabled: {
-    backgroundColor: '#95a5a6',
+    backgroundColor: COLORS.tertiaryText,
   },
   buttonText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -205,10 +206,10 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 14,
-    color: '#7f8c8d',
+    color: COLORS.secondaryText,
   },
   linkTextBold: {
-    color: '#3498db',
+    color: COLORS.primaryText,
     fontWeight: '600',
   },
 });
