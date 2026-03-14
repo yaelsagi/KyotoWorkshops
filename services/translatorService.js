@@ -14,6 +14,90 @@ import {
   DEFAULT_TRANSLATOR_PROFILE,
 } from "../constants/translatorOptions";
 
+const LANGUAGE_LEVEL_RANK = {
+  basic: 1,
+  conversational: 2,
+  fluent: 3,
+  professional: 4,
+  native: 5,
+};
+
+function normalizeLanguageLevel(level) {
+  if (typeof level === "number" && level >= 1 && level <= 5) {
+    return level;
+  }
+
+  const normalized = String(level || "").trim().toLowerCase();
+  if (!normalized) {
+    return 0;
+  }
+
+  return LANGUAGE_LEVEL_RANK[normalized] || 0;
+}
+
+function isTranslatorApprovedForBooking(translator) {
+  return (
+    translator?.roles?.translator === true &&
+    translator?.translatorProfile?.isApproved === true
+  );
+}
+
+function getTranslatorLanguages(translator) {
+  const profileLanguages = (translator?.translatorProfile?.languages || [])
+    .map((item) => (typeof item === "string" ? item : item?.language))
+    .filter(Boolean);
+
+  const appLanguages = (translator?.translatorApplication?.targetLanguages || []).filter(Boolean);
+  return [...new Set([...profileLanguages, ...appLanguages])];
+}
+
+function getTranslatorLanguageLevel(translator, requestedLanguage) {
+  const language = String(requestedLanguage || "").trim().toLowerCase();
+  if (!language) {
+    return 0;
+  }
+
+  const profileEntry = (translator?.translatorProfile?.languages || []).find(
+    (item) =>
+      String(typeof item === "string" ? item : item?.language || "")
+        .trim()
+        .toLowerCase() === language
+  );
+
+  const profileLevel = normalizeLanguageLevel(
+    typeof profileEntry === "string" ? null : profileEntry?.level
+  );
+  if (profileLevel > 0) {
+    return profileLevel;
+  }
+
+  const appLevelEntry = (translator?.translatorApplication?.otherLanguageLevels || []).find(
+    (item) => String(item?.language || "").trim().toLowerCase() === language
+  );
+
+  return normalizeLanguageLevel(appLevelEntry?.level);
+}
+
+function getTranslatorWards(translator) {
+  const profileWards = (translator?.translatorProfile?.wardsAvailable || []).filter(Boolean);
+  const appWards = (translator?.translatorApplication?.wardsAvailable || []).filter(Boolean);
+  return [...new Set([...profileWards, ...appWards])];
+}
+
+function getTranslatorHourlyRate(translator) {
+  const hourlyRateYen = Number(translator?.translatorProfile?.hourlyRateYen);
+  if (Number.isFinite(hourlyRateYen) && hourlyRateYen > 0) {
+    return hourlyRateYen;
+  }
+
+  const hourlyRate = Number(translator?.translatorProfile?.hourlyRate);
+  if (Number.isFinite(hourlyRate) && hourlyRate > 0) {
+    return hourlyRate;
+  }
+
+  return Number.MAX_SAFE_INTEGER;
+}
+
 // Submit translator application
 export async function submitTranslatorApplication(userId, payload) {
   if (!userId) {
@@ -117,6 +201,7 @@ export async function reviewTranslatorApplication(userId, approved) {
     translatorProfile: {
       ...DEFAULT_TRANSLATOR_PROFILE,
       ...previousProfile,
+      isApproved: Boolean(approved),
       enabled: Boolean(approved),
     },
     updatedAt: now,
@@ -133,9 +218,10 @@ export async function fetchApprovedTranslators() {
 
   return snapshot.docs
     .map((item) => ({ id: item.id, ...item.data() }))
-    .filter((user) => user?.translatorProfile?.enabled === true)
+    .filter((user) => isTranslatorApprovedForBooking(user))
     .map((user) => ({
       id: user.id,
+      roles: user.roles || {},
       displayName: user.displayName,
       photoURL: user.photoURL || null,
       translatorApplication: user.translatorApplication || DEFAULT_TRANSLATOR_APPLICATION,
@@ -160,22 +246,119 @@ export function matchTranslators({ translators, requestedLanguage, ward }) {
   const language = String(requestedLanguage || "").trim();
   const normalizedWard = String(ward || "").trim();
 
-  // Filter by matching language and ward
+  // Stage 1 — filter translators that cannot work this booking
   return (translators || [])
     .filter((translator) => {
-      const targetLanguages = translator?.translatorApplication?.targetLanguages || [];
-      const wardsAvailable = translator?.translatorApplication?.wardsAvailable || [];
-      return targetLanguages.includes(language) && wardsAvailable.includes(normalizedWard);
+      if (!isTranslatorApprovedForBooking(translator)) {
+        return false;
+      }
+
+      const supportedLanguages = getTranslatorLanguages(translator);
+      if (!supportedLanguages.includes(language)) {
+        return false;
+      }
+
+      const wardsAvailable = getTranslatorWards(translator);
+      if (!wardsAvailable.includes(normalizedWard)) {
+        return false;
+      }
+
+      return true;
     })
-    // Sort: highest rating → most jobs → lowest rate
+    // Stage 2 — rank by language level, then rating, then lower fee
     .sort((a, b) => {
-      const ratingDelta = Number(b?.translatorProfile?.ratingAverage || 0) - Number(a?.translatorProfile?.ratingAverage || 0);
+      const levelDelta =
+        getTranslatorLanguageLevel(b, language) - getTranslatorLanguageLevel(a, language);
+      if (levelDelta !== 0) return levelDelta;
+
+      const ratingDelta =
+        Number(b?.translatorProfile?.ratingAverage || 0) - Number(a?.translatorProfile?.ratingAverage || 0);
       if (ratingDelta !== 0) return ratingDelta;
 
-      const jobsDelta = Number(b?.translatorProfile?.completedJobs || 0) - Number(a?.translatorProfile?.completedJobs || 0);
-      if (jobsDelta !== 0) return jobsDelta;
+      return getTranslatorHourlyRate(a) - getTranslatorHourlyRate(b);
+    });
+}
 
-      return Number(a?.translatorProfile?.hourlyRateYen || Number.MAX_SAFE_INTEGER)
-        - Number(b?.translatorProfile?.hourlyRateYen || Number.MAX_SAFE_INTEGER);
+// Convert "HH:MM" time string to total minutes since midnight for comparison
+function timeToMinutes(timeStr) {
+  if (!timeStr || typeof timeStr !== "string") return -1;
+  const [h, m] = timeStr.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return -1;
+  return h * 60 + m;
+}
+
+// Match translators accounting for session weekday and time range availability.
+// Uses translatorProfile.availability: [{ day, from, to }] (new spec format).
+// Falls back to matchTranslators (language + ward only) when no availability data exists.
+export function matchTranslatorsForSession({ translators, requestedLanguage, ward, sessionDate, sessionTime }) {
+  const language = String(requestedLanguage || "").trim();
+  const normalizedWard = String(ward || "").trim();
+
+  // Derive weekday name from sessionDate (e.g. "2026-04-12" → "Sunday")
+  let sessionDay = null;
+  let sessionMinutes = -1;
+  if (sessionDate) {
+    try {
+      const d = new Date(sessionDate);
+      if (!Number.isNaN(d.getTime())) {
+        sessionDay = d.toLocaleDateString("en-US", { weekday: "long" }); // "Monday", "Tuesday" …
+      }
+    } catch {
+      // Ignore parse error; availability check will be skipped
+    }
+  }
+  if (sessionTime) {
+    sessionMinutes = timeToMinutes(sessionTime);
+  }
+
+  return (translators || [])
+    .filter((translator) => {
+      // Stage 1 — filter translators that cannot work this booking
+      if (!isTranslatorApprovedForBooking(translator)) {
+        return false;
+      }
+
+      const supportedLanguages = getTranslatorLanguages(translator);
+      if (!supportedLanguages.includes(language)) {
+        return false;
+      }
+
+      const wardsAvailable = getTranslatorWards(translator);
+      if (!wardsAvailable.includes(normalizedWard)) {
+        return false;
+      }
+
+      // Availability check (weekday + time range)
+      const availability = translator?.translatorProfile?.availability || translator?.translatorProfile?.availabilitySlots || [];
+      if (sessionDay) {
+        const dayMatch = availability.find(
+          (slot) => String(slot?.day || "").toLowerCase() === sessionDay.toLowerCase()
+        );
+        if (!dayMatch) return false;
+
+        // Check session time falls within the translator's time window
+        if (sessionMinutes >= 0) {
+          const fromMin = timeToMinutes(dayMatch.from);
+          const toMin = timeToMinutes(dayMatch.to);
+          if (fromMin >= 0 && toMin >= 0 && (sessionMinutes < fromMin || sessionMinutes > toMin)) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    })
+    // Stage 2 — rank by language level, then rating, then lower fee
+    .sort((a, b) => {
+      const levelDelta =
+        getTranslatorLanguageLevel(b, language) - getTranslatorLanguageLevel(a, language);
+      if (levelDelta !== 0) return levelDelta;
+
+      const ratingDelta =
+        Number(b?.translatorProfile?.ratingAverage || 0) -
+        Number(a?.translatorProfile?.ratingAverage || 0);
+      if (ratingDelta !== 0) return ratingDelta;
+
+      return getTranslatorHourlyRate(a) - getTranslatorHourlyRate(b);
     });
 }

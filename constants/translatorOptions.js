@@ -51,7 +51,13 @@ export const DEFAULT_TRANSLATOR_APPLICATION = {
 };
 
 export const DEFAULT_TRANSLATOR_PROFILE = {
+  isApproved: false,
   enabled: false,
+  japaneseLevel: "",
+  languages: [],
+  wardsAvailable: [],
+  availability: [],
+  hourlyRate: null,
   hourlyRateYen: null,
   availabilitySlots: [],
   ratingAverage: 0,

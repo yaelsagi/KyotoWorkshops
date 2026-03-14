@@ -338,4 +338,30 @@ export async function deleteBooking(bookingId) {
   }
 }
 
+// Check if a specific user already has an active (non-cancelled) booking for a workshop
+export async function fetchUserBookingForWorkshop(userId, workshopId) {
+  if (!userId || !workshopId) return null;
+
+  try {
+    const bookingsCollection = collection(db, 'bookings');
+    const q = query(
+      bookingsCollection,
+      where('userId', '==', userId),
+      where('workshopId', '==', workshopId)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+
+    // Return the first non-cancelled booking
+    const active = snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .find(b => b.status !== 'cancelled');
+
+    return active || null;
+  } catch (error) {
+    console.log('Could not check existing booking:', error.message);
+    return null;
+  }
+}
+
 export { validateBooking, BOOKING_STATUSES, TRANSLATOR_BOOKING_STATUSES };

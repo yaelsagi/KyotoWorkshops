@@ -9,13 +9,13 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
-  Image,
   Modal,
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { Image as ExpoImage } from "expo-image";
 import {
   CameraIcon,
   XMarkIcon,
@@ -184,6 +184,28 @@ export default function CreateWorkshopScreen({ navigation, route }) {
     setActiveSingleSelectPicker(null);
   };
 
+  const getSubmissionErrorMessage = (error) => {
+    const message = String(error?.message || '').trim();
+
+    if (!message) {
+      return 'Could not create workshop. Please try again later.';
+    }
+
+    if (message.toLowerCase().includes('permission') || message.toLowerCase().includes('insufficient')) {
+      return 'You do not have permission to submit this workshop. Please sign in again and try.';
+    }
+
+    if (message.toLowerCase().includes('sign in again') || message.toLowerCase().includes('session mismatch')) {
+      return message;
+    }
+
+    if (message.toLowerCase().includes('failed to upload')) {
+      return `${message}\n\nTry using smaller image files or a more stable connection.`;
+    }
+
+    return message;
+  };
+
   // Picker config for duration and ward
   const singleSelectPickerConfig = activeSingleSelectPicker === "duration"
     ? {
@@ -344,6 +366,11 @@ export default function CreateWorkshopScreen({ navigation, route }) {
 
   // Submit form
   const handleSubmit = async () => {
+    if (!currentUser?.uid) {
+      Alert.alert('Sign in required', 'Please sign in again before submitting a workshop.');
+      return;
+    }
+
     const errors = validateForm();
 
     if (errors.length > 0) {
@@ -422,7 +449,7 @@ export default function CreateWorkshopScreen({ navigation, route }) {
       await triggerSubmitErrorHaptic();
       Alert.alert(
         "Error",
-        "Could not create workshop. Please try again later."
+        getSubmissionErrorMessage(error)
       );
     } finally {
       setSubmitting(false);
@@ -549,9 +576,12 @@ export default function CreateWorkshopScreen({ navigation, route }) {
         </Text>
         {coverImage ? (
           <View style={styles.coverImageContainer}>
-            <Image
+            <ExpoImage
               source={{ uri: coverImage.uri }}
               style={styles.coverImagePreview}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={100}
             />
             <Pressable
               style={styles.removeImageButton}
@@ -583,9 +613,12 @@ export default function CreateWorkshopScreen({ navigation, route }) {
         <View style={styles.galleryGrid}>
           {galleryImages.map((image, index) => (
             <View key={index} style={styles.galleryImageContainer}>
-              <Image
+              <ExpoImage
                 source={{ uri: image.uri }}
                 style={styles.galleryImagePreview}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={100}
               />
               <Pressable
                 style={styles.removeGalleryImageButton}

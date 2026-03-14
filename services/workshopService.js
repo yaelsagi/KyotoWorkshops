@@ -17,7 +17,7 @@ import { collection, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc, a
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
-import { db, storage } from '../firebase/firebase';
+import { db, storage, auth } from '../firebase/firebase';
 import { ALL_OPTION, KYOTO_WARDS } from '../constants/kyotoWards';
 import { normalizeWardName } from '../utils/normalizeWardName';
 import { WORKSHOP_CATEGORIES } from '../constants/workshopCategories';
@@ -130,12 +130,50 @@ async function uploadImageAsset(workshopId, imageAsset, kind, index = 0) {
 
   const timestamp = Date.now();
   const random = Math.random().toString(36).slice(2, 8);
-  const extension = imageAsset?.fileName?.split('.').pop() || 'jpg';
-  const imageRef = ref(storage, `images/${workshopId}/${kind}_${index}_${timestamp}_${random}.${extension}`);
+  const extensionSource = imageAsset?.fileName || imageAsset?.uri || '';
+  const extension = extensionSource.split('?')[0].split('.').pop() || 'jpg';
+  const imageRef = ref(storage, `workshop-images/${workshopId}/${kind}_${index}_${timestamp}_${random}.${extension}`);
 
-  const blob = await fetch(imageAsset.uri).then((response) => response.blob());
-  await uploadBytes(imageRef, blob);
-  return getDownloadURL(imageRef);
+  let blob;
+  try {
+    blob = await fetch(imageAsset.uri).then((response) => response.blob());
+    await uploadBytes(imageRef, blob);
+    return getDownloadURL(imageRef);
+  } catch (error) {
+    throw new Error(`Failed to upload ${kind} image ${index + 1}: ${error.message}`);
+  } finally {
+    if (blob && typeof blob.close === 'function') {
+      blob.close();
+    }
+  }
+}
+
+async function uploadImageAssetsWithConcurrency(
+  workshopId,
+  imageAssets,
+  kind,
+  startIndex = 0,
+  maxConcurrency = 2
+) {
+  if (!Array.isArray(imageAssets) || imageAssets.length === 0) {
+    return [];
+  }
+
+  const results = [];
+
+  for (let index = 0; index < imageAssets.length; index += maxConcurrency) {
+    const batch = imageAssets.slice(index, index + maxConcurrency);
+    const batchUrls = await Promise.all(
+      batch.map((asset, batchIndex) =>
+        uploadImageAsset(workshopId, asset, kind, startIndex + index + batchIndex)
+      )
+    );
+    results.push(...batchUrls);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  return results;
 }
 
 function validateWorkshopSubmission(workshop) {
@@ -393,6 +431,15 @@ export async function createWorkshop(workshopData, ownerId) {
     throw new Error('Owner ID required to create workshop');
   }
 
+  const authenticatedUserId = auth?.currentUser?.uid;
+  if (!authenticatedUserId) {
+    throw new Error('You need to sign in again before submitting a workshop');
+  }
+
+  if (authenticatedUserId !== ownerId) {
+    throw new Error('Session mismatch detected. Please sign out and sign back in.');
+  }
+
   const validation = validateWorkshopSubmission(workshopData);
   if (!validation.valid) {
     throw new Error(`Invalid workshop data: ${validation.errors.join(', ')}`);
@@ -404,8 +451,10 @@ export async function createWorkshop(workshopData, ownerId) {
     const workshopId = workshopDoc.id;
 
     const coverImageUrl = await uploadImageAsset(workshopId, workshopData.coverImageAsset, 'cover', 0);
-    const galleryImageUrls = await Promise.all(
-      workshopData.galleryImageAssets.map((imageAsset, index) => uploadImageAsset(workshopId, imageAsset, 'gallery', index))
+    const galleryImageUrls = await uploadImageAssetsWithConcurrency(
+      workshopId,
+      workshopData.galleryImageAssets,
+      'gallery'
     );
 
     const now = new Date().toISOString();
@@ -460,7 +509,7 @@ export async function createWorkshop(workshopData, ownerId) {
     
   } catch (error) {
     console.error('Failed to create workshop:', error);
-    throw new Error('Could not save workshop to database');
+    throw new Error(error?.message || 'Could not save workshop to database');
   }
 }
 
@@ -501,25 +550,32 @@ export async function updateWorkshop(workshopId, updates) {
       ? normalizedUpdates.galleryImageAssets
       : existingWorkshop.images?.slice(1) || [];
 
-    const galleryImageUrls = await Promise.all(
-      incomingGallery.map(async (imageAsset, index) => {
-        if (typeof imageAsset === 'string' && imageAsset.startsWith('http')) {
-          return imageAsset;
-        }
+    const cleanGallery = [];
+    const newGalleryAssets = [];
 
-        if (imageAsset?.uri && imageAsset.uri.startsWith('http')) {
-          return imageAsset.uri;
-        }
+    incomingGallery.forEach((imageAsset) => {
+      if (typeof imageAsset === 'string' && imageAsset.startsWith('http')) {
+        cleanGallery.push(imageAsset);
+        return;
+      }
 
-        if (imageAsset?.uri) {
-          return uploadImageAsset(workshopId, imageAsset, 'gallery', index);
-        }
+      if (imageAsset?.uri && imageAsset.uri.startsWith('http')) {
+        cleanGallery.push(imageAsset.uri);
+        return;
+      }
 
-        return null;
-      })
+      if (imageAsset?.uri) {
+        newGalleryAssets.push(imageAsset);
+      }
+    });
+
+    const uploadedGalleryUrls = await uploadImageAssetsWithConcurrency(
+      workshopId,
+      newGalleryAssets,
+      'gallery',
+      cleanGallery.length
     );
-
-    const cleanGallery = galleryImageUrls.filter(Boolean);
+    cleanGallery.push(...uploadedGalleryUrls);
 
     if (!coverImage || cleanGallery.length < 3) {
       throw new Error('Cover image and at least 3 gallery images are required');
@@ -717,7 +773,7 @@ export async function fetchPlatformCategories() {
       .sort((a, b) => a.localeCompare(b));
     return merged;
   } catch (error) {
-    // Fall back quietly when guest users cannot read platform settings
+    // Fall back when guest users cannot read platform settings
     if (!String(error?.message || '').toLowerCase().includes('insufficient permissions')) {
       console.warn('Could not fetch platform categories, using defaults:', error.message);
     }
@@ -802,36 +858,6 @@ export async function getAllWorkshopImagesForDisplay(workshop) {
   return workshop.images
     .filter((url) => typeof url === 'string' && (url.startsWith('http') || url.startsWith('file://')))
     .map((url) => ({ uri: url }));
-}
-
-// Upload one image file to Firebase Storage and attach URL to workshop document
-// imageBlob is expected to come from file picker/camera processing
-export async function uploadWorkshopImage(workshopId, imageBlob, fileExtension = 'jpg') {
-  if (!workshopId) {
-    throw new Error('Workshop ID is required');
-  }
-
-  if (!imageBlob) {
-    throw new Error('Image file is required');
-  }
-
-  try {
-    const timestamp = Date.now();
-    const imageRef = ref(storage, `images/${workshopId}/image_${timestamp}.${fileExtension}`);
-    await uploadBytes(imageRef, imageBlob);
-    const downloadUrl = await getDownloadURL(imageRef);
-
-    const workshopDoc = doc(db, 'workshops', workshopId);
-    await updateDoc(workshopDoc, {
-      images: arrayUnion(downloadUrl),
-      updatedAt: new Date().toISOString(),
-    });
-
-    return downloadUrl;
-  } catch (error) {
-    console.error('Image upload failed:', error);
-    throw new Error('Could not upload workshop image');
-  }
 }
 
 export { validateWorkshopData };

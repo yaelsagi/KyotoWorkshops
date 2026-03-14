@@ -1,5 +1,23 @@
-// Detailed workshop view — images, reviews, booking, and translator matching
-// Images are prefetched when navigating from the map for near-instant loading
+// screens/WorkshopDetailsScreen.js
+// Detailed workshop view with cover image, info, gallery, reviews, and booking
+//
+// Image Loading Optimization:
+// - Cover image uses expo-image with cachePolicy="disk"
+// - Gallery images loaded via PictureCard component (also uses disk caching)
+// - Loading state tracked separately for cover image (loadingCoverImage state)
+// - ActivityIndicator spinner shown while cover image downloads
+//
+// Performance Enhancements:
+// - Images prefetched when selected from map (MapScreen calls prefetchWorkshopImages)
+// - Prefetch runs in background when user taps marker - loads images before navigating here
+// - Result: Cover image displays instantly when screen opens (no waiting)
+// - All images cached on device after first view (<100ms on repeat visits)
+//
+// Data Loading:
+// - Reviews fetched with AsyncStorage fallback (offline support)
+// - Wikipedia content fetched asynchronously (cultural context)
+// - Workshop images queried from Firebase Storage paths
+// - All data loads in parallel for better perceived performance
 
 import React, { useState, useEffect, useCallback } from "react";
 import { 
@@ -18,9 +36,8 @@ import * as Haptics from "expo-haptics";
 import { CameraIcon, HeartIcon, StarIcon } from "react-native-heroicons/outline";
 
 import { fetchReviewsForWorkshop } from "../services/reviewService";
-import { createBooking } from "../services/bookingService";
-import { SUPPORTED_LANGUAGES } from "../constants/supportedLanguages";
-import { fetchApprovedTranslators, matchTranslators } from "../services/translatorService";
+import { fetchUserBookingForWorkshop } from "../services/bookingService";
+import BookingSheet from "../components/BookingSheet";
 import {
   getWorkshopImageUrl,
   getAllWorkshopImages,
@@ -39,7 +56,8 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
   const { user: authUser } = useAuth();
   const { currentUser } = useUser();
   const { isFavourited, toggleFavourite } = useFavourites();
-  const [isBooked, setIsBooked] = useState(false);
+  const [existingBooking, setExistingBooking] = useState(null);
+  const [bookingSheetVisible, setBookingSheetVisible] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [wikipediaContent, setWikipediaContent] = useState(null);
@@ -100,10 +118,16 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
     loadWikipedia();
     loadWorkshopImages();
 
+    if (authUser?.uid) {
+      fetchUserBookingForWorkshop(authUser.uid, workshop.id)
+        .then((booking) => setExistingBooking(booking))
+        .catch(() => {});
+    }
+
     // Screen-level safety net: if user opens details directly (without map),
     // we still prefetch/cache remote images for faster gallery interactions.
     prefetchWorkshopImages(workshop);
-  }, [workshop]);
+  }, [workshop, authUser]);
 
   if (!workshop) {
     return (
@@ -123,7 +147,7 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
     toggleFavourite(workshop.id);
   };
 
-  const handleBookWorkshop = async () => {
+  const handleBookWorkshop = () => {
     if (!authUser) {
       navigation.navigate("Login", {
         redirectTo: "WorkshopDetails",
@@ -134,119 +158,7 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
       });
       return;
     }
-    
-    if (isBooked) {
-      Alert.alert("Already Booked", "You've already booked this workshop");
-      return;
-    }
-
-    if (!workshop?.id || !workshop?.title || typeof workshop?.priceYen !== "number") {
-      Alert.alert("Invalid workshop", "This workshop has incomplete data and cannot be booked.");
-      return;
-    }
-
-    // Save booking with optional translator details
-    const saveBooking = async (translatorRequested, requestedLanguage = null, translatorId = null) => {
-      try {
-        const bookingData = {
-          workshopId: workshop.id,
-          userId: currentUser.uid,
-          status: "pending",
-          translatorRequested,
-          requestedLanguage,
-          translatorId,
-          title: workshop.title,
-          category: workshop.category,
-          ward: workshop.ward,
-          priceYen: workshop.priceYen,
-          workshopImage: Array.isArray(workshop.images) && workshop.images.length > 0 ? workshop.images[0] : null,
-          lat: workshop.lat,
-          lng: workshop.lng,
-        };
-        
-        await createBooking(bookingData);
-        setIsBooked(true);
-        Alert.alert("Success!", "Workshop booked successfully");
-      } catch (err) {
-        Alert.alert("Error", err.message || "Could not complete booking");
-      }
-    };
-
-    // Recommend approved translators for the selected language
-    const chooseTranslator = async (requestedLanguage) => {
-      try {
-        const translators = await fetchApprovedTranslators();
-        const matches = matchTranslators({
-          translators,
-          requestedLanguage,
-          ward: workshop.ward,
-        });
-
-        if (matches.length === 0) {
-          Alert.alert(
-            "No exact match",
-            "No approved translators currently match this language and ward. We will still mark translator requested.",
-            [
-              { text: "Continue", onPress: () => saveBooking(true, requestedLanguage, null) },
-              { text: "Cancel", style: "cancel" },
-            ]
-          );
-          return;
-        }
-
-        const topMatches = matches.slice(0, 3);
-        const buttons = topMatches.map((translator) => ({
-          text: `${translator.displayName} (Rating ${Number(translator.translatorProfile?.ratingAverage || 0).toFixed(1)})`,
-          onPress: () => saveBooking(true, requestedLanguage, translator.id),
-        }));
-
-        Alert.alert(
-          "Select translator",
-          `Recommended: ${topMatches[0].displayName}`,
-          [
-            ...buttons,
-            { text: "Request without selecting", onPress: () => saveBooking(true, requestedLanguage, null) },
-            { text: "Cancel", style: "cancel" },
-          ]
-        );
-      } catch (error) {
-        Alert.alert("Translator matching failed", error.message || "Could not match translators right now.");
-      }
-    };
-
-    // Ask which language needs translation support
-    const askTranslatorLanguage = () => {
-      const languageButtons = SUPPORTED_LANGUAGES
-        .filter((language) => language !== "Japanese")
-        .map((language) => ({
-          text: language,
-          onPress: () => chooseTranslator(language),
-        }));
-
-      // All languages in one alert; on Android (RN ≥0.68) renders as a scrollable list
-      Alert.alert("Choose translator language", "Select the language you need support for", [
-        ...languageButtons,
-        { text: "Cancel", style: "cancel" },
-      ]);
-    };
-
-    Alert.alert(
-      "Confirm Booking",
-      `Book "${workshop.title}" for ¥${workshop.priceYen.toLocaleString()}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Continue",
-          onPress: () => {
-            Alert.alert("Need translator?", "Add translator support to this booking.", [
-              { text: "No", onPress: () => saveBooking(false, null) },
-              { text: "Yes", onPress: askTranslatorLanguage },
-              { text: "Cancel", style: "cancel" },
-            ]);
-          }
-        }
-      ]
-    );
+    setBookingSheetVisible(true);
   };
 
   const handleShowAllReviews = () => {
@@ -462,17 +374,42 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
           <Text style={styles.priceUnit}>Per person</Text>
         </View>
 
-        <Pressable 
-          style={[styles.bookButton, isBooked && styles.bookedButton]}
-          onPress={handleBookWorkshop}
-          accessibilityRole="button"
-          accessibilityLabel={isBooked ? "Already booked" : "Book now"}
-        >
-          <Text style={styles.bookButtonText}>
-            {isBooked ? "Booked" : "Book now"}
-          </Text>
-        </Pressable>
+        {existingBooking ? (
+          <View style={styles.bookedBanner}>
+            <Text style={styles.bookedBannerText}>
+              You booked this workshop for{" "}
+              {existingBooking.sessionDate
+                ? new Date(existingBooking.sessionDate).toLocaleDateString("en-GB", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                  })
+                : "a session"}
+              {existingBooking.sessionTime ? ` at ${existingBooking.sessionTime}` : ""}. See you then!
+            </Text>
+          </View>
+        ) : (
+          <Pressable
+            style={styles.bookButton}
+            onPress={handleBookWorkshop}
+            accessibilityRole="button"
+            accessibilityLabel="Book now"
+          >
+            <Text style={styles.bookButtonText}>Book now</Text>
+          </Pressable>
+        )}
       </View>
+
+      <BookingSheet
+        visible={bookingSheetVisible}
+        onClose={() => setBookingSheetVisible(false)}
+        onBooked={(saved) => {
+          setExistingBooking(saved);
+          setBookingSheetVisible(false);
+        }}
+        workshop={workshop}
+        currentUser={currentUser}
+      />
     </View>
   );
 }
@@ -706,8 +643,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
   },
-  bookedButton: {
-    backgroundColor: "#4A9D5F",
+  bookedBanner: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#EEF7EE",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#B5D6B2",
+    justifyContent: "center",
+  },
+  bookedBannerText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#3A7A3A",
+    lineHeight: 18,
   },
   bookButtonText: {
     fontSize: 15,

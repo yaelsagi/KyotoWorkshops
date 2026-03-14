@@ -151,6 +151,13 @@ export default function MapScreen({ navigation }) {
       // ignore safely
     }
     toggleFavourite(workshopId);
+    setSelected((previousSelected) => {
+      if (!previousSelected || previousSelected.id !== workshopId) {
+        return previousSelected;
+      }
+
+      return { ...previousSelected };
+    });
   }, [toggleFavourite]);
 
   // Pass platformCategories so admin-approved custom categories appear in the filter sheet.
@@ -350,7 +357,6 @@ export default function MapScreen({ navigation }) {
                 ignoreNextMapPressRef.current = true;
                 Keyboard.dismiss();
                 setSelected(workshop);
-                // Prefetch workshop images when marker is tapped (optimization for report)
                 prefetchWorkshopImages(workshop);
               }}
             />

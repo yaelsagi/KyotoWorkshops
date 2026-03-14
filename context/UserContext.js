@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { getUserProfile } from "../services/userService";
 import { DEFAULT_TRANSLATOR_APPLICATION, DEFAULT_TRANSLATOR_PROFILE } from "../constants/translatorOptions";
+import { auth } from "../firebase/firebase";
 
 const DEFAULT_ROLES = {
   admin: false,
@@ -30,15 +31,16 @@ export const UserProvider = ({ children }) => {
       try {
         // Load the full user profile from Firestore to get all the details
         const profile = await getUserProfile(authUser.uid);
+        const liveDisplayName = auth.currentUser?.displayName || authUser.displayName || null;
         
         if (profile) {
           // Combine Firebase Auth data with Firestore profile data to create a complete user object
           setCurrentUser({
             id: authUser.uid,
             uid: authUser.uid,
-            name: profile.displayName || authUser.displayName,
+            name: profile.displayName || liveDisplayName,
             email: authUser.email,
-            displayName: profile.displayName || authUser.displayName,
+            displayName: profile.displayName || liveDisplayName,
             photoURL: profile.photoURL || null,
             roles: { ...DEFAULT_ROLES, ...(profile.roles || {}) },
             translatorApplication: profile.translatorApplication || DEFAULT_TRANSLATOR_APPLICATION,
@@ -52,9 +54,9 @@ export const UserProvider = ({ children }) => {
           setCurrentUser({
             id: authUser.uid,
             uid: authUser.uid,
-            name: authUser.displayName,
+            name: liveDisplayName,
             email: authUser.email,
-            displayName: authUser.displayName,
+            displayName: liveDisplayName,
             photoURL: null,
             roles: DEFAULT_ROLES,
             translatorApplication: DEFAULT_TRANSLATOR_APPLICATION,
@@ -64,13 +66,14 @@ export const UserProvider = ({ children }) => {
         }
       } catch (error) {
         console.error('Error loading user profile:', error);
+        const liveDisplayName = auth.currentUser?.displayName || authUser.displayName || null;
         // Fallback to auth user data only if there's an error
         setCurrentUser({
           id: authUser.uid,
           uid: authUser.uid,
-          name: authUser.displayName,
+          name: liveDisplayName,
           email: authUser.email,
-          displayName: authUser.displayName,
+          displayName: liveDisplayName,
           photoURL: null,
           roles: DEFAULT_ROLES,
           translatorApplication: DEFAULT_TRANSLATOR_APPLICATION,

@@ -33,7 +33,10 @@ export default function RootNavigator() {
       <RootStack.Screen
         name="WorkshopDetails"
         component={WorkshopDetailsScreen}
-        options={{ title: "Workshop" }}
+        options={{
+          title: "Workshop",
+          headerBackTitle: "Back",
+        }}
       />
 
       <RootStack.Screen

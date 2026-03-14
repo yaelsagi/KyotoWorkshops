@@ -19,8 +19,6 @@ import {
   UserCircleIcon, 
   CameraIcon, 
   ShareIcon, 
-  GlobeAltIcon,
-  PaintBrushIcon,
   QuestionMarkCircleIcon, 
   ShieldCheckIcon, 
   InformationCircleIcon,
@@ -41,7 +39,7 @@ import { COLORS } from "../styles/colors";
 
 export default function ProfileScreen({ navigation }) {
   const { user: authUser } = useAuth();
-  const { currentUser, updateUser } = useUser();
+  const { currentUser, updateUser, loading: loadingUser } = useUser();
   const { favourites, clearFavourites } = useFavourites();
   const [notifications, setNotifications] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -267,7 +265,6 @@ export default function ProfileScreen({ navigation }) {
             PHOTO_OPERATION_TIMEOUT_MS,
             'Timed out while removing old profile photo'
           );
-          console.log('Old profile photo deleted');
         } catch (error) {
           console.warn('Could not delete old photo, proceeding anyway:', error);
         }
@@ -354,7 +351,7 @@ export default function ProfileScreen({ navigation }) {
         {/* Guest Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
-            <UserCircleIcon size={60} color="#999" />
+            <UserCircleIcon size={60} color={COLORS.tertiaryText} />
           </View>
           <Text style={styles.userName}>Guest</Text>
           <Text style={styles.userEmail}>Sign in to access all features</Text>
@@ -430,6 +427,17 @@ export default function ProfileScreen({ navigation }) {
     );
   }
 
+  if (loadingUser && !currentUser) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.profileLoadingState}>
+          <ActivityIndicator size="large" color={COLORS.primaryText} />
+          <Text style={styles.profileLoadingText}>Loading profile…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // Authenticated mode - user is signed in
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -440,7 +448,7 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.avatar}>
             {uploadingPhoto ? (
               <View style={styles.spinnerContainer}>
-                <ActivityIndicator size="large" color="#1F1F1F" />
+                <ActivityIndicator size="large" color={COLORS.primaryText} />
               </View>
             ) : currentUser?.photoURL ? (
               <Image 
@@ -448,7 +456,7 @@ export default function ProfileScreen({ navigation }) {
                 style={styles.avatarImage}
               />
             ) : (
-              <UserCircleIcon size={60} color="#999" />
+              <UserCircleIcon size={60} color={COLORS.tertiaryText} />
             )}
           </View>
           {/* Edit photo button - shows at bottom center of avatar */}
@@ -457,14 +465,14 @@ export default function ProfileScreen({ navigation }) {
             onPress={handleChangePhoto}
             disabled={uploadingPhoto}
           >
-            <CameraIcon size={16} color="#1F1F1F" />
+            <CameraIcon size={16} color={COLORS.primaryText} />
             <Text style={styles.cameraButtonText}>
               {currentUser?.photoURL ? 'Edit' : 'Add Photo'}
             </Text>
           </Pressable>
         </View>
         <Text style={styles.userName}>
-          {currentUser?.displayName || authUser?.displayName || authUser?.email?.split('@')[0] || 'User'}
+          {currentUser?.displayName || currentUser?.name || authUser?.displayName || 'User'}
         </Text>
         <Text style={styles.userEmail}>{authUser?.email || 'user@example.com'}</Text>
       </View>
@@ -483,7 +491,7 @@ export default function ProfileScreen({ navigation }) {
             }
           }}
         >
-          <GlobeAltIcon size={28} color={COLORS.primaryText} style={styles.statIcon} />
+          <Text style={styles.statEmoji}>🌐</Text>
           <Text style={styles.statLabel}>
             {translatorButtonLabel}
           </Text>
@@ -496,7 +504,7 @@ export default function ProfileScreen({ navigation }) {
               : navigation.navigate("CreateWorkshop")
           }
         >
-          <PaintBrushIcon size={28} color={COLORS.primaryText} style={styles.statIcon} />
+          <Text style={styles.statEmoji}>🎨</Text>
           <Text style={styles.statLabel}>
             {isHostEnabled ? "Workshop Host Dashboard" : "Host a Workshop"}
           </Text>
@@ -564,17 +572,28 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
   },
   content: {
     paddingBottom: 40,
+  },
+  profileLoadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  profileLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.secondaryText,
   },
   profileHeader: {
     alignItems: "center",
     paddingTop: 24,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#E6E2DA",
+    borderBottomColor: COLORS.border,
   },
   avatarContainer: {
     position: 'relative',
@@ -584,7 +603,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: "#F5F1E8",
+    backgroundColor: COLORS.imagePlaceholderBackground,
     alignItems: "center",
     justifyContent: "center",
     overflow: 'hidden',
@@ -610,25 +629,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderWidth: 2,
-    borderColor: '#1F1F1F',
+    borderColor: COLORS.primaryText,
     gap: 4,
   },
   cameraButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1F1F1F',
+    color: COLORS.primaryText,
   },
   userName: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
-    color: "#666",
+    color: COLORS.secondaryText,
   },
   statsContainer: {
     flexDirection: "row",
@@ -639,22 +658,31 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     padding: 18,
-    backgroundColor: "#F5F1E8",
+    backgroundColor: COLORS.imagePlaceholderBackground,
     borderRadius: 14,
     alignItems: "center",
   },
   statValue: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     marginBottom: 4,
   },
-  statIcon: {
-    marginBottom: 8,
+  statEmoji: {
+    fontSize: 28,
+    marginBottom: 4,
+    ...Platform.select({
+      ios: {
+        fontFamily: 'Apple Color Emoji',
+      },
+      android: {
+        fontFamily: 'Noto Color Emoji',
+      },
+    }),
   },
   statLabel: {
     fontSize: 13,
-    color: "#666",
+    color: COLORS.secondaryText,
     fontWeight: "600",
   },
   section: {
@@ -664,14 +692,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     marginBottom: 12,
     paddingHorizontal: 2,
   },
   subSectionTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     marginTop: 6,
     marginBottom: 8,
     paddingHorizontal: 2,
@@ -680,21 +708,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
-    backgroundColor: "#FBFAF7",
+    backgroundColor: COLORS.cardBackground,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E6E2DA",
+    borderColor: COLORS.border,
     marginBottom: 12,
   },
   settingLabel: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     marginBottom: 2,
   },
   settingHelp: {
     fontSize: 13,
-    color: "#666",
+    color: COLORS.secondaryText,
   },
   logoutButton: {
     marginHorizontal: 16,
@@ -702,44 +730,44 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#C1121F",
+    borderColor: COLORS.danger,
     alignItems: "center",
   },
   logoutText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#C1121F",
+    color: COLORS.danger,
   },
   authButton: {
     marginTop: 12,
     paddingVertical: 15,
     borderRadius: 12,
-    backgroundColor: "#1F1F1F",
+    backgroundColor: COLORS.primaryText,
     alignItems: "center",
   },
   authButtonText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: COLORS.white,
   },
   authButtonSecondary: {
     marginTop: 12,
     paddingVertical: 15,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#1F1F1F",
-    backgroundColor: "#FFFFFF",
+    borderColor: COLORS.primaryText,
+    backgroundColor: COLORS.white,
     alignItems: "center",
   },
   authButtonSecondaryText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
   },
   authHelpText: {
     marginTop: 16,
     fontSize: 13,
-    color: "#666",
+    color: COLORS.secondaryText,
     textAlign: "center",
     lineHeight: 20,
   },
@@ -747,6 +775,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 20,
     fontSize: 12,
-    color: "#999",
+    color: COLORS.tertiaryText,
   },
 });

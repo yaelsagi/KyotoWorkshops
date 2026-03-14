@@ -57,10 +57,10 @@ Think of Storage as your **file system** or cloud drive for media files.
 ## Project Structure
 
 - `screens/` UI screens
-  - `UploadImagesScreen.js` - (Optional) Upload workshop images to Firebase Storage
 - `components/` reusable UI components
 - `services/` business logic and data access helpers
-  - `storageService.js` - (Optional) Firebase Storage upload/delete/list functions
+  - `workshopService.js` - Workshop creation, update, and image upload flow
+  - `storageService.js` - Profile photos and translator proof uploads
 - `firebase/firebase.js` - Firebase Web SDK initialization (`db`, `storage`)
 - `data/workshops.json` - local sample seed/source data for development content
 
@@ -79,7 +79,7 @@ workshop-images/
 └── workshop_woodworking_for_beginners/
 ```
 
-**Optional:** `UploadImagesScreen.js` and `storageService.js` provide client-side upload functionality for future user-generated content or dynamic image management. Not required for basic workshop display.
+Workshop image upload for host submissions is handled in `workshopService.js` during workshop create/edit flows.
 
 ## Setup
 
@@ -141,3 +141,32 @@ Keep async loading and error handling in screens/services (`ActivityIndicator`, 
 
 - App demonstrates async state handling, validation, persistence, API integration, navigation, and test coverage.
 - Ensure Firestore and Storage security rules are configured appropriately before final demo.
+
+
+Test users:
+
+1. Admin:
+email: admin@test.com
+password: Appadmin1
+Role: admin
+(name: I am admin)
+
+2. Translator and workshop host:
+Role: translator, host
+name: Mariko Nakagawa
+Email: user1@test.com
+password: Testuser1
+
+
+3. workshop host:
+Role: host
+name: Shirakawa Minori
+user2@test.com
+Password: Testuser2
+
+4. translator:
+Role: translator
+name: Mateo Rodríguez
+Email: user3@test.com
+Password: Testuser3
+
