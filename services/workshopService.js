@@ -1,3 +1,26 @@
+// Fetch all workshops (regardless if they are approved or pending) - for admin review screen )
+export async function fetchAllWorkshopsForAdmin() {
+  try {
+    const snapshot = await getDocs(collection(db, 'workshops'));
+    if (snapshot.empty) {
+      return [];
+    }
+    const workshops = snapshot.docs.map(document => {
+      const data = normalizeWorkshop({ id: document.id, ...document.data() });
+      // Validate before returning
+      const validation = validateWorkshopData(data);
+      if (!validation.valid) {
+        console.warn(`Workshop ${document.id} has issues:`, validation.errors);
+        return null;
+      }
+      return data;
+    });
+    return workshops.filter(w => w !== null);
+  } catch (error) {
+    console.log('Could not fetch all workshops for admin:', error.message);
+    return [];
+  }
+}
 // Workshop data service
 // Handles all workshop-related database operations with proper error handling
 //
@@ -340,35 +363,32 @@ export async function fetchWorkshops() {
   const CACHE_KEY = 'kyoto_workshops_cache';
 
   try {
-    const workshopCollection = collection(db, 'workshops');
-    const snapshot = await getDocs(workshopCollection);
-    
+    // Query only approved workshops
+    const workshopQuery = query(collection(db, 'workshops'), where('status', '==', WORKSHOP_STATUS.APPROVED));
+    const snapshot = await getDocs(workshopQuery);
+
     // No workshops in database yet
     if (snapshot.empty) {
       return [];
     }
-    
+
     // Convert Firebase documents to plain objects
     const workshops = snapshot.docs.map(document => {
       const data = normalizeWorkshop({ id: document.id, ...document.data() });
 
-      if (data.status !== WORKSHOP_STATUS.APPROVED) {
-        return null;
-      }
-      
       // Make sure each workshop has valid data before returning it
       const validation = validateWorkshopData(data);
       if (!validation.valid) {
         console.warn(`Workshop ${document.id} has issues:`, validation.errors);
         return null;
       }
-      
+
       return data;
     });
-    
+
     // Filter out any workshops that failed validation
     const filtered = workshops.filter(w => w !== null);
-    
+
     // Cache successful fetch for offline use
     if (filtered.length > 0) {
       try {
@@ -377,9 +397,9 @@ export async function fetchWorkshops() {
         console.log('Could not cache workshops:', e.message);
       }
     }
-    
+
     return filtered;
-    
+
   } catch (error) {
     // Network error or Firebase unavailable - try cached data
     console.log('Could not fetch from Firebase:', error.message);

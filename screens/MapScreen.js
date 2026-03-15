@@ -83,9 +83,8 @@ export default function MapScreen({ navigation }) {
   // They update ONLY when the user presses Apply.
   const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
 
-  // iOS MapView sometimes fails to redraw when markers are added back.
-  // We bump this key ONLY on Apply to force a reliable redraw.
-  const [mapRefreshKey, setMapRefreshKey] = useState(0);
+  // to fix iOS MapView issue where it fails to redraw when markers that change state (like favourite toggled)
+  const [mapRefreshCount, setMapRefreshCount] = useState(0);
 
   // Platform category list (static defaults + admin-approved custom categories).
   // Initialised to static list so filters work immediately before the Firestore fetch completes.
@@ -151,6 +150,11 @@ export default function MapScreen({ navigation }) {
       // ignore safely
     }
     toggleFavourite(workshopId);
+
+    // iOS MapView can miss marker color/state updates until the next touch.
+    // Force one redraw immediately after favourite state changes.
+    setMapRefreshCount((count) => count + 1);
+
     setSelected((previousSelected) => {
       if (!previousSelected || previousSelected.id !== workshopId) {
         return previousSelected;
@@ -174,15 +178,15 @@ export default function MapScreen({ navigation }) {
       selectedCategories: Array.isArray(draft.selectedCategories) ? draft.selectedCategories : [],
     });
 
-    // Force MapView redraw once (fixes iOS "markers only reappear after tap")
-    setMapRefreshKey((k) => k + 1);
+    // Force MapView to redraw (fixing iOS marker state update issues)
+    setMapRefreshCount((count) => count + 1);
 
     setFiltersVisible(false);
   }, []);
 
   const handleClearFilters = useCallback(() => {
     setAppliedFilters(DEFAULT_FILTERS);
-    setMapRefreshKey((k) => k + 1);
+    setMapRefreshCount((count) => count + 1);
     setFiltersVisible(false);
   }, []);
 
@@ -207,7 +211,7 @@ export default function MapScreen({ navigation }) {
       return next;
     });
 
-    setMapRefreshKey((k) => k + 1);
+    setMapRefreshCount((count) => count + 1);
   }, []);
 
   const activeFilterChips = useMemo(() => {
@@ -331,7 +335,7 @@ export default function MapScreen({ navigation }) {
 
       <MapView
         // Important: key changes only when Apply/Clear is pressed (not on every toggle)
-        key={`map-${mapRefreshKey}`}
+        key={`map-${mapRefreshCount}`}
         style={StyleSheet.absoluteFillObject}
         initialRegion={KYOTO_REGION}
         onPress={() => {
@@ -350,7 +354,7 @@ export default function MapScreen({ navigation }) {
 
           return (
             <WorkshopMapMarker
-              key={`${w.id}-${isSaved ? "saved" : "default"}`}
+              key={w.id}
               workshop={w}
               saved={isSaved}
               onSelect={(workshop) => {

@@ -17,15 +17,27 @@ import { auth, db } from '../firebase/firebase';
 import { getPasswordValidationError } from '../utils/passwordValidation';
 import { DEFAULT_TRANSLATOR_APPLICATION, DEFAULT_TRANSLATOR_PROFILE } from '../constants/translatorOptions';
 
+function normalizeEmailOrThrow(email) {
+  if (!String(email || '').trim()) {
+    throw new Error('Email cannot be empty');
+  }
+
+  return String(email).trim().toLowerCase();
+}
+
+function isInvalidCredentialError(code) {
+  return (
+    code === 'auth/wrong-password' ||
+    code === 'auth/invalid-credential' ||
+    code === 'auth/invalid-login-credentials'
+  );
+}
+
 // Create a new user account with email, password, and display name
 export async function signUpWithEmail(email, password, displayName) {
   // Validate required fields
   if (!email || !password) {
     throw new Error('Email and password are required');
-  }
-
-  if (!String(email).trim()) {
-    throw new Error('Email cannot be empty');
   }
 
   if (!displayName || !displayName.trim()) {
@@ -37,14 +49,9 @@ export async function signUpWithEmail(email, password, displayName) {
     throw new Error(passwordError);
   }
 
-  const cleanedEmail = String(email).trim().toLowerCase();
+  const cleanedEmail = normalizeEmailOrThrow(email);
 
   try {
-    const existingSignInMethods = await fetchSignInMethodsForEmail(auth, cleanedEmail);
-    if (existingSignInMethods.length > 0) {
-      throw new Error('An account using this email already exists.');
-    }
-
     // Create Firebase Auth user account
     const userCredential = await createUserWithEmailAndPassword(auth, cleanedEmail, password);
     const user = userCredential.user;
@@ -119,11 +126,7 @@ export async function changeCurrentUserPassword(currentPassword, newPassword) {
   } catch (error) {
     console.error('Password change failed:', error);
 
-    if (
-      error.code === 'auth/wrong-password' ||
-      error.code === 'auth/invalid-credential' ||
-      error.code === 'auth/invalid-login-credentials'
-    ) {
+    if (isInvalidCredentialError(error.code)) {
       throw new Error('Current password is incorrect');
     }
 
@@ -178,11 +181,7 @@ export async function reauthenticateCurrentUser(password) {
     await reauthenticateWithCredential(currentUser, credential);
     return true;
   } catch (error) {
-    if (
-      error.code === 'auth/wrong-password' ||
-      error.code === 'auth/invalid-credential' ||
-      error.code === 'auth/invalid-login-credentials'
-    ) {
+    if (isInvalidCredentialError(error.code)) {
       throw new Error('Current password is incorrect');
     }
 
@@ -202,20 +201,35 @@ export async function signInWithEmail(email, password) {
     throw new Error('Email and password are required');
   }
 
-  if (!String(email).trim()) {
-    throw new Error('Email cannot be empty');
-  }
-
-  const cleanedEmail = String(email).trim().toLowerCase();
+  const cleanedEmail = normalizeEmailOrThrow(email);
+  const NO_ACCOUNT_MESSAGE = 'No account found with this email address.';
 
   try {
     const userCredential = await signInWithEmailAndPassword(auth, cleanedEmail, password);
     return userCredential.user;
   } catch (error) {
     console.error('Sign in failed:', error);
-    
-    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-      throw new Error('Invalid email or password');
+
+    if (error.code === 'auth/wrong-password') {
+      throw new Error('The password is incorrect.');
+    } else if (error.code === 'auth/user-not-found') {
+      throw new Error(NO_ACCOUNT_MESSAGE);
+    } else if (error.code === 'auth/invalid-credential') {
+      // Some Firebase projects return invalid-credential for both missing user and wrong password.
+      // Disambiguate with a second check.
+      try {
+        const methods = await fetchSignInMethodsForEmail(auth, cleanedEmail);
+        if (Array.isArray(methods) && methods.length > 0) {
+          throw new Error('The password is incorrect.');
+        }
+        throw new Error(NO_ACCOUNT_MESSAGE);
+      } catch (lookupError) {
+        if (lookupError.message === 'The password is incorrect.' || lookupError.message === NO_ACCOUNT_MESSAGE) {
+          throw lookupError;
+        }
+        // If lookup fails (network/rules), keep a safe fallback.
+        throw new Error('Invalid email or password.');
+      }
     } else if (error.code === 'auth/invalid-email') {
       throw new Error('Invalid email address');
     } else if (error.code === 'auth/user-disabled') {

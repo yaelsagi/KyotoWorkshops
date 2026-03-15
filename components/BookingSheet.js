@@ -222,30 +222,32 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
 
         {/* Header row */}
         <View style={styles.sheetHeader}>
-          {step === 1 ? (
-            <Pressable
-              onPress={() => setStep(0)}
-              style={styles.backBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-            >
-              <ChevronLeftIcon size={20} color={COLORS.primaryText} />
-              <Text style={styles.backBtnText}>Back</Text>
-            </Pressable>
-          ) : (
-            <View style={styles.backBtn} />
-          )}
+          <View style={styles.headerSide}>
+            {step === 1 ? (
+              <Pressable
+                onPress={() => setStep(0)}
+                style={styles.backBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+              >
+                <ChevronLeftIcon size={20} color={COLORS.primaryText} />
+                <Text style={styles.backBtnText}>Back</Text>
+              </Pressable>
+            ) : null}
+          </View>
 
           <Text style={styles.sheetTitle}>Book Workshop</Text>
 
-          <Pressable
-            onPress={onClose}
-            style={styles.closeBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Close booking sheet"
-          >
-            <XMarkIcon size={22} color={COLORS.primaryText} />
-          </Pressable>
+          <View style={styles.headerSide}>
+            <Pressable
+              onPress={onClose}
+              style={styles.closeBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Close booking sheet"
+            >
+              <XMarkIcon size={22} color={COLORS.primaryText} />
+            </Pressable>
+          </View>
         </View>
 
         {/* Scrollable content */}
@@ -259,9 +261,9 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
           {/* ─── STEP 0: Translator preference ─────────────────────────── */}
           {step === 0 && (
             <View>
-              <Text style={styles.stepTitle}>Do you need a translator?</Text>
+              <Text style={styles.stepTitle}>Book a translator?</Text>
               <Text style={styles.stepSubtitle}>
-                Add Japanese-to-your-language translation support for this session.
+                Choose one of our curated translators for a smooth experience.
               </Text>
 
               {/* Yes / No buttons */}
@@ -311,7 +313,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
               {/* Language picker — shown when user selects Yes */}
               {needsTranslator === true && (
                 <View style={styles.languageSection}>
-                  <Text style={styles.subsectionLabel}>Select your language</Text>
+                  <Text style={styles.subsectionLabel}>Select translation language</Text>
                   <View style={styles.languageGrid}>
                     {SUPPORTED_LANGUAGES.filter((l) => l !== "Japanese").map((lang) => (
                       <Pressable
@@ -336,13 +338,6 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
                     ))}
                   </View>
 
-                  {loadingTranslators && (
-                    <ActivityIndicator
-                      size="small"
-                      color={COLORS.approved}
-                      style={{ marginTop: 12 }}
-                    />
-                  )}
                 </View>
               )}
 
@@ -544,11 +539,15 @@ const styles = StyleSheet.create({
   sheetHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+  },
+  headerSide: {
+    width: 84,
+    justifyContent: "center",
   },
   sheetTitle: {
     fontSize: 16,
@@ -564,12 +563,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F1E8",
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "flex-end",
   },
   backBtn: {
-    width: 70,
     flexDirection: "row",
     alignItems: "center",
     gap: 2,
+    alignSelf: "flex-start",
   },
   backBtnText: {
     fontSize: 14,
