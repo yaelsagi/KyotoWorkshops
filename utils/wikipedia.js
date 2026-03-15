@@ -1,6 +1,4 @@
-﻿// Progress: this utility module is implemented and currently used by app features.
-// utils/wikipedia.js
-export async function fetchWikipediaContent(keyword) {
+﻿export async function fetchWikipediaContent(keyword) {
   try {
     const response = await fetch(
       `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(keyword)}`

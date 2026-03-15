@@ -1,4 +1,3 @@
-// Progress: booking validation rules and status constants used by booking flows.
 import { SUPPORTED_LANGUAGES } from '../constants/supportedLanguages';
 
 export const BOOKING_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed'];
@@ -16,7 +15,7 @@ export function validateBooking(booking) {
     errors.push('User ID is required');
   }
 
-  // Status should be one of the defined options
+  // Status must be one of the defined options
   if (booking.status && !BOOKING_STATUSES.includes(booking.status)) {
     errors.push(`Status must be one of: ${BOOKING_STATUSES.join(', ')}`);
   }
