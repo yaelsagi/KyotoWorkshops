@@ -33,7 +33,8 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
-import { CameraIcon, HeartIcon, StarIcon } from "react-native-heroicons/outline";
+import { CameraIcon, HeartIcon } from "react-native-heroicons/outline";
+import { StarIcon } from "react-native-heroicons/solid";
 
 import { fetchReviewsForWorkshop } from "../services/reviewService";
 import { fetchUserBookingForWorkshop } from "../services/bookingService";
@@ -46,6 +47,7 @@ import {
 } from "../services/workshopService";
 import ReviewCard from "../components/ReviewCard";
 import PictureCard from "../components/PictureCard";
+import TopWorkshopTag from "../components/TopWorkshopTag";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
 import { useFavourites } from "../context/FavouritesContext";
@@ -198,6 +200,7 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
           ) : (
             <CameraIcon size={48} color="#8B7B6B" />
           )}
+          {workshop.isTop && <TopWorkshopTag />}
         </View>
 
         {/* Workshop header */}
@@ -268,6 +271,15 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Reviews</Text>
+            {reviews.length > 1 && (
+              <Pressable
+                onPress={handleShowAllReviews}
+                accessibilityRole="button"
+                accessibilityLabel="Show all reviews"
+              >
+                <Text style={styles.showAllLink}>Show all</Text>
+              </Pressable>
+            )}
           </View>
           {loadingReviews ? (
             <ActivityIndicator size="small" style={{ marginVertical: 16 }} />
@@ -287,7 +299,7 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
                 </Text>
               </View>
               <FlatList
-                data={reviews.slice(0, 3)}
+                data={reviews}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <ReviewCard 
@@ -301,14 +313,6 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
                 scrollEventThrottle={16}
                 contentContainerStyle={styles.horizontalList}
               />
-                <Pressable 
-                  onPress={handleShowAllReviews}
-                  style={styles.showAllButton}
-                  accessibilityRole="button"
-                  accessibilityLabel="Show all reviews"
-                >
-                  <Text style={styles.showAllButtonText}>Show all reviews</Text>
-                </Pressable>
             </>
           ) : (
             <Text style={styles.noReviews}>No reviews yet. Be the first to review!</Text>
@@ -352,15 +356,6 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
           <Text style={styles.listItem}>• Tea and light refreshments</Text>
           <Text style={styles.listItem}>• Take your creation home</Text>
         </View>
-
-        {workshop.isTop && (
-          <View style={styles.badge}>
-            <View style={styles.badgeRow}>
-              <StarIcon size={14} color="#B08A2E" />
-              <Text style={styles.badgeText}>Top Rated Workshop</Text>
-            </View>
-          </View>
-        )}
 
         {/* Spacing for fixed bottom button */}
         <View style={styles.spacer} />
@@ -578,26 +573,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 20,
   },
-  badge: {
-    marginHorizontal: 18,
-    marginBottom: 16,
-    padding: 12,
-    backgroundColor: "#FFF9E6",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#F4E4A3",
-    alignItems: "center",
-  },
-  badgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  badgeText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#B08A2E",
-  },
   spacer: {
     height: 20,
   },
@@ -663,5 +638,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     color: "#FFFFFF",
+    textAlign: "center",
+    width: "100%",
+    includeFontPadding: false,
   },
 });

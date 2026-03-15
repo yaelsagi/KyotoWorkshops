@@ -433,7 +433,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
               </View>
               {participants >= maxParticipants && (
                 <Text style={styles.maxWarning}>
-                  You reached the maximum number of participants.
+                  You reached the maximum number of participants for this workshop.
                 </Text>
               )}
 
@@ -608,24 +608,25 @@ const styles = StyleSheet.create({
   },
   optionBtn: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: "center",
-    backgroundColor: COLORS.cardBackground,
+    justifyContent: "center",
+    backgroundColor: COLORS.white,
   },
   optionBtnSelected: {
-    borderColor: COLORS.approved,
-    backgroundColor: COLORS.approvedBackground,
+    borderColor: COLORS.primaryText,
+    backgroundColor: COLORS.primaryText,
   },
   optionBtnText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "600",
-    color: COLORS.secondaryText,
+    color: COLORS.primaryText,
   },
   optionBtnTextSelected: {
-    color: COLORS.approved,
+    color: COLORS.white,
   },
 
   // ── Language grid ─────────────────────────────────────────────────────────
@@ -644,24 +645,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   languageChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.cardBackground,
+    backgroundColor: COLORS.white,
   },
   languageChipSelected: {
-    borderColor: COLORS.approved,
-    backgroundColor: COLORS.approvedBackground,
+    borderColor: COLORS.primaryText,
+    backgroundColor: COLORS.primaryText,
   },
   languageChipText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
-    color: COLORS.secondaryText,
+    color: COLORS.primaryText,
   },
   languageChipTextSelected: {
-    color: COLORS.approved,
+    color: COLORS.white,
   },
 
   // ── Next button ───────────────────────────────────────────────────────────
@@ -694,14 +695,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: 18,
+    borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.cardBackground,
+    backgroundColor: COLORS.white,
   },
   sessionCardSelected: {
-    borderColor: COLORS.approved,
-    backgroundColor: COLORS.approvedBackground,
+    borderColor: COLORS.primaryText,
+    backgroundColor: COLORS.primaryText,
   },
   sessionDate: {
     fontSize: 14,
@@ -709,7 +710,7 @@ const styles = StyleSheet.create({
     color: COLORS.primaryText,
   },
   sessionDateSelected: {
-    color: COLORS.approved,
+    color: COLORS.white,
   },
   sessionTime: {
     fontSize: 14,
@@ -717,7 +718,7 @@ const styles = StyleSheet.create({
     color: COLORS.secondaryText,
   },
   sessionTimeSelected: {
-    color: COLORS.approved,
+    color: COLORS.white,
   },
   noSessions: {
     fontSize: 14,

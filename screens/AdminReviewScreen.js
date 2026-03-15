@@ -22,6 +22,46 @@ import {
   reviewTranslatorApplication,
 } from "../services/translatorService";
 
+function formatAvailabilitySlots(slots) {
+  if (!Array.isArray(slots) || slots.length === 0) {
+    return "None";
+  }
+
+  return slots
+    .map((slot) => {
+      const day = String(slot?.day || "").trim();
+      const from = String(slot?.from || "").trim();
+      const to = String(slot?.to || "").trim();
+      if (!day && !from && !to) {
+        return null;
+      }
+      if (!from || !to) {
+        return day || "Unspecified";
+      }
+      return `${day} ${from}-${to}`.trim();
+    })
+    .filter(Boolean)
+    .join(", ");
+}
+
+function formatLanguageLevels(levels) {
+  if (!Array.isArray(levels) || levels.length === 0) {
+    return "None";
+  }
+
+  return levels
+    .map((item) => {
+      const language = String(item?.language || "").trim();
+      const level = String(item?.level || "").trim();
+      if (!language) {
+        return null;
+      }
+      return level ? `${language} (${level})` : language;
+    })
+    .filter(Boolean)
+    .join(", ");
+}
+
 export default function AdminReviewScreen({ navigation }) {
   const { user: authUser } = useAuth();
   const { currentUser, loading: userLoading } = useUser();
@@ -306,6 +346,8 @@ export default function AdminReviewScreen({ navigation }) {
         ) : (
           pendingTranslatorApplications.map((user) => {
             const application = user.translatorApplication || {};
+            const submittedRate = Number(application.hourlyRateYen || application.hourlyRate);
+            const availability = application.availability || application.availabilitySlots || [];
             return (
               <View key={user.id} style={styles.card}>
                 <Text style={styles.cardTitle}>{user.displayName || "Unknown user"}</Text>
@@ -316,8 +358,15 @@ export default function AdminReviewScreen({ navigation }) {
                   Languages: {(application.targetLanguages || []).join(", ") || "None"}
                 </Text>
                 <Text style={styles.cardMeta}>
+                  Language levels: {formatLanguageLevels(application.otherLanguageLevels)}
+                </Text>
+                <Text style={styles.cardMeta}>
                   Wards: {(application.wardsAvailable || []).join(", ") || "None"}
                 </Text>
+                <Text style={styles.cardMeta}>
+                  Hourly rate: {Number.isFinite(submittedRate) && submittedRate > 0 ? `¥${submittedRate}/hour` : "Not set"}
+                </Text>
+                <Text style={styles.cardMeta}>Availability: {formatAvailabilitySlots(availability) || "None"}</Text>
                 <Text style={styles.cardMeta}>Interview: {application.interviewAt || "Not selected"}</Text>
 
                 <View style={styles.buttonRow}>

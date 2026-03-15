@@ -47,6 +47,10 @@ export const DEFAULT_TRANSLATOR_APPLICATION = {
   jlptDocumentURL: null,
   otherProofDocumentURLs: [],
   wardsAvailable: [],
+  availability: [],
+  availabilitySlots: [],
+  hourlyRateYen: null,
+  hourlyRate: null,
   notes: null,
 };
 

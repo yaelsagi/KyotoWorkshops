@@ -5,8 +5,25 @@
 - add heptics (added already to create workshop screen) and fallback
 - go over all scripts to check for magic numbers
 - audit extra auth guards before protected screens
-- create software architecture diagram
-- create component/class diagram
+- 1️⃣ Software Architecture Diagram
+  User
+   ↓
+  React Native App
+   ↓
+  Screens
+   ↓
+  Services
+   ↓
+  Firebase
+- 2️⃣ Component Diagram
+  App
+   ├ Screens
+   ├ Components
+   ├ Services
+   └ Firebase
+- before final submission: remove `key_do not submit/` and any local Firebase service-account key files from project folder
+- before final submission: delete `Lorem ipsum.md`
+- replace "About this workshop" text in Firebase with Lorem Ipsum before final content pass
 
 ## ✅ Phase 1: Auth Foundation (COMPLETED)
 

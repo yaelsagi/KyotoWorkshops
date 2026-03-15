@@ -3,13 +3,19 @@
     "id": "workshop_kintsugi_basics",
     "title": "Kintsugi Basics",
     "category": "Kintsugi",
-    "ward": "東山区",
+    "ward": "Higashiyama",
     "priceYen": 12000,
     "isTop": true,
     "lat": 35.0037,
     "lng": 135.7788,
     "wikipediaKeyword": "Kintsugi",
     "availableSlots": 8,
+    "sessions": [
+      { "id": "workshop_kintsugi_basics_session_1", "date": "2026-03-18", "time": "10:00" },
+      { "id": "workshop_kintsugi_basics_session_2", "date": "2026-03-20", "time": "14:00" },
+      { "id": "workshop_kintsugi_basics_session_3", "date": "2026-03-22", "time": "11:30" },
+      { "id": "workshop_kintsugi_basics_session_4", "date": "2026-03-25", "time": "15:00" }
+    ],
     "hostId": "host_takashi_yamamoto",
     "images": ["image_1.jpg", "image_2.jpg", "image_3.jpg"],
     "reviews": [
@@ -18,7 +24,7 @@
         "userId": "user_sarah_mitchell",
         "name": "Sarah M.",
         "rating": 5,
-        "text": "Amazing experience! The instructor was patient and knowledgeable. I learned so much about the art form.",
+        "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam.",
         "createdAt": "2026-02-15T10:30:00Z"
       },
       {
@@ -26,7 +32,7 @@
         "userId": "user_james_kim",
         "name": "James K.",
         "rating": 4,
-        "text": "Great workshop, very hands-on. The materials were high quality and the atmosphere was welcoming.",
+        "text": "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Quis nostrud exercitation ullamco laboris.",
         "createdAt": "2026-02-10T14:20:00Z"
       },
       {
@@ -34,7 +40,7 @@
         "userId": "user_yuki_tanaka",
         "name": "Yuki T.",
         "rating": 5,
-        "text": "Fantastic! As someone who studies traditional arts, this was exactly what I was looking for.",
+        "text": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
         "createdAt": "2026-02-05T16:45:00Z"
       },
       {
@@ -42,48 +48,8 @@
         "userId": "user_maria_lopez",
         "name": "Maria L.",
         "rating": 4,
-        "text": "Lovely time. The workshop could have been a bit longer, but overall very enjoyable.",
+        "text": "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
         "createdAt": "2026-01-28T11:15:00Z"
-      }
-    ]
-  },
-  {
-    "id": "workshop_nihonga_intro",
-    "title": "Nihonga Intro",
-    "category": "Nihonga",
-    "ward": "左京区",
-    "priceYen": 9000,
-    "isTop": false,
-    "lat": 35.0272,
-    "lng": 135.7809,
-    "wikipediaKeyword": "Nihonga",
-    "availableSlots": 6,
-    "hostId": "host_keiko_suzuki",
-    "images": ["image_1.jpg", "image_2.jpg", "image_3.jpg"],
-    "reviews": [
-      {
-        "id": "review_nihonga_1",
-        "userId": "user_chen_wang",
-        "name": "Chen W.",
-        "rating": 5,
-        "text": "Incredible introduction to traditional Japanese painting. So much packed into the session!",
-        "createdAt": "2026-02-20T09:00:00Z"
-      },
-      {
-        "id": "review_nihonga_2",
-        "userId": "user_emma_robert",
-        "name": "Emma R.",
-        "rating": 4,
-        "text": "Beautiful experience. The colors and techniques are fascinating to learn.",
-        "createdAt": "2026-02-12T13:30:00Z"
-      },
-      {
-        "id": "review_nihonga_3",
-        "userId": "user_alex_davis",
-        "name": "Alex D.",
-        "rating": 5,
-        "text": "The best art workshop I've ever attended. Highly recommended!",
-        "createdAt": "2026-02-08T15:00:00Z"
       }
     ]
   },
@@ -91,13 +57,20 @@
     "id": "workshop_tea_ceremony",
     "title": "Tea Ceremony Experience",
     "category": "Tea Ceremony",
-    "ward": "中京区",
+    "ward": "Nakagyo",
     "priceYen": 6000,
     "isTop": true,
     "lat": 35.0116,
     "lng": 135.7681,
     "wikipediaKeyword": "Japanese tea ceremony",
     "availableSlots": 10,
+    "sessions": [
+      { "id": "workshop_tea_ceremony_session_1", "date": "2026-03-18", "time": "10:30" },
+      { "id": "workshop_tea_ceremony_session_2", "date": "2026-03-21", "time": "14:00" },
+      { "id": "workshop_tea_ceremony_session_3", "date": "2026-03-22", "time": "11:00" },
+      { "id": "workshop_tea_ceremony_session_4", "date": "2026-03-24", "time": "15:30" },
+      { "id": "workshop_tea_ceremony_session_5", "date": "2026-03-27", "time": "10:30" }
+    ],
     "hostId": "host_hiroshi_nakamura",
     "images": ["image_1.jpg", "image_2.jpg", "image_3.jpg"],
     "reviews": [
@@ -106,7 +79,7 @@
         "userId": "user_tom_brown",
         "name": "Tom B.",
         "rating": 5,
-        "text": "Relaxing and educational. The host explained every step beautifully. A must-do in Kyoto!",
+        "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt.",
         "createdAt": "2026-02-22T10:00:00Z"
       },
       {
@@ -114,7 +87,7 @@
         "userId": "user_lisa_nguyen",
         "name": "Lisa N.",
         "rating": 5,
-        "text": "One of the highlights of my trip! Very authentic and peaceful.",
+        "text": "Ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.",
         "createdAt": "2026-02-18T14:30:00Z"
       },
       {
@@ -122,7 +95,7 @@
         "userId": "user_raj_patel",
         "name": "Raj P.",
         "rating": 4,
-        "text": "Great cultural experience. The matcha was delicious and the atmosphere was serene.",
+        "text": "Ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit.",
         "createdAt": "2026-02-14T11:45:00Z"
       },
       {
@@ -130,7 +103,7 @@
         "userId": "user_sofia_garcia",
         "name": "Sofia G.",
         "rating": 5,
-        "text": "Perfect introduction to Japanese culture. Left feeling very centered and calm.",
+        "text": "In voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat.",
         "createdAt": "2026-02-10T09:30:00Z"
       },
       {
@@ -138,7 +111,7 @@
         "userId": "user_marco_venti",
         "name": "Marco V.",
         "rating": 4,
-        "text": "Authentic experience in a beautiful setting. Highly worth the time.",
+        "text": "Non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
         "createdAt": "2026-02-05T16:00:00Z"
       }
     ]
@@ -147,13 +120,19 @@
     "id": "workshop_calligraphy_for_all",
     "title": "Calligraphy for All",
     "category": "Calligraphy",
-    "ward": "上京区",
+    "ward": "Kamigyo",
     "priceYen": 7000,
     "isTop": false,
     "lat": 35.0231,
     "lng": 135.7569,
     "wikipediaKeyword": "Japanese calligraphy",
     "availableSlots": 7,
+    "sessions": [
+      { "id": "workshop_calligraphy_for_all_session_1", "date": "2026-03-18", "time": "09:30" },
+      { "id": "workshop_calligraphy_for_all_session_2", "date": "2026-03-20", "time": "13:00" },
+      { "id": "workshop_calligraphy_for_all_session_3", "date": "2026-03-23", "time": "11:30" },
+      { "id": "workshop_calligraphy_for_all_session_4", "date": "2026-03-27", "time": "16:00" }
+    ],
     "hostId": "host_ayaka_fujimoto",
     "images": ["image_1.jpg", "image_2.jpg", "image_3.jpg"],
     "reviews": []
@@ -162,13 +141,19 @@
     "id": "workshop_flower_arrangement",
     "title": "Flower Arrangement",
     "category": "Ikebana",
-    "ward": "右京区",
+    "ward": "Ukyo",
     "priceYen": 8500,
     "isTop": true,
     "lat": 35.0164,
     "lng": 135.7073,
     "wikipediaKeyword": "Ikebana",
     "availableSlots": 8,
+    "sessions": [
+      { "id": "workshop_flower_arrangement_session_1", "date": "2026-03-19", "time": "10:00" },
+      { "id": "workshop_flower_arrangement_session_2", "date": "2026-03-22", "time": "14:30" },
+      { "id": "workshop_flower_arrangement_session_3", "date": "2026-03-25", "time": "11:00" },
+      { "id": "workshop_flower_arrangement_session_4", "date": "2026-03-29", "time": "15:00" }
+    ],
     "hostId": "host_mina_okada",
     "images": ["image_1.jpg", "image_2.jpg", "image_3.jpg", "image_4.jpg"],
     "reviews": []
@@ -177,13 +162,18 @@
     "id": "workshop_traditional_pottery_techniques",
     "title": "Traditional Pottery Techniques",
     "category": "Pottery",
-    "ward": "山科区",
+    "ward": "Yamashina",
     "priceYen": 11000,
     "isTop": false,
     "lat": 34.9858,
     "lng": 135.8142,
     "wikipediaKeyword": "Japanese pottery",
     "availableSlots": 5,
+    "sessions": [
+      { "id": "workshop_traditional_pottery_techniques_session_1", "date": "2026-03-17", "time": "10:30" },
+      { "id": "workshop_traditional_pottery_techniques_session_2", "date": "2026-03-21", "time": "13:30" },
+      { "id": "workshop_traditional_pottery_techniques_session_3", "date": "2026-03-26", "time": "11:00" }
+    ],
     "hostId": "host_daichi_sato",
     "images": ["image_1.jpg"],
     "reviews": []
@@ -192,15 +182,48 @@
     "id": "workshop_woodworking_for_beginners",
     "title": "Woodworking for Beginners",
     "category": "Woodworking",
-    "ward": "北区",
-    "priceYen": 9500,
-    "isTop": false,
-    "lat": 35.0402,
-    "lng": 135.7468,
+    "ward": "Kita",
+    "priceYen": 9000,
+    "isTop": true,
+    "lat": 35.0384,
+    "lng": 135.7449,
     "wikipediaKeyword": "Japanese woodworking",
-    "availableSlots": 6,
+    "availableSlots": 10,
+    "sessions": [
+      { "id": "workshop_woodworking_for_beginners_session_1", "date": "2026-03-18", "time": "10:00" },
+      { "id": "workshop_woodworking_for_beginners_session_2", "date": "2026-03-20", "time": "13:00" },
+      { "id": "workshop_woodworking_for_beginners_session_3", "date": "2026-03-22", "time": "14:00" },
+      { "id": "workshop_woodworking_for_beginners_session_4", "date": "2026-03-24", "time": "11:30" },
+      { "id": "workshop_woodworking_for_beginners_session_5", "date": "2026-03-26", "time": "15:00" },
+      { "id": "workshop_woodworking_for_beginners_session_6", "date": "2026-03-28", "time": "15:30" }
+    ],
     "hostId": "host_ryo_kobayashi",
     "images": ["image_1.jpg", "image_2.jpg", "image_3.jpg"],
-    "reviews": []
+    "reviews": [
+      {
+        "id": "review_woodworking_1",
+        "userId": "user_daniel_clark",
+        "name": "Daniel C.",
+        "rating": 5,
+        "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore.",
+        "createdAt": "2026-02-24T10:20:00Z"
+      },
+      {
+        "id": "review_woodworking_2",
+        "userId": "user_hana_ito",
+        "name": "Hana I.",
+        "rating": 4,
+        "text": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+        "createdAt": "2026-02-16T14:05:00Z"
+      },
+      {
+        "id": "review_woodworking_3",
+        "userId": "user_michael_ross",
+        "name": "Michael R.",
+        "rating": 5,
+        "text": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+        "createdAt": "2026-02-09T12:40:00Z"
+      }
+    ]
   }
 ]

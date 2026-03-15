@@ -227,6 +227,7 @@ async function seedWorkshops() {
         lng: workshop.lng,
         wikipediaKeyword: workshop.wikipediaKeyword,
         availableSlots: workshop.availableSlots,
+        sessions: Array.isArray(workshop.sessions) ? workshop.sessions : [],
         hostId: workshop.hostId,
         images: imageUrls,
       };

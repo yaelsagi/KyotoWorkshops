@@ -494,7 +494,13 @@ const styles = StyleSheet.create({
   cardPrice: { marginTop: 8, fontSize: 15, fontWeight: "700", color: "#1F1F1F" },
   cardActionsRow: { marginTop: 12, flexDirection: "row", gap: 10 },
   primaryButton: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: "#1F1F1F", alignItems: "center" },
-  primaryButtonText: { color: "#fff", fontWeight: "700" },
+  primaryButtonText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 15,
+    textAlign: "center",
+    includeFontPadding: false,
+  },
   secondaryButton: {
     paddingVertical: 12,
     paddingHorizontal: 14,

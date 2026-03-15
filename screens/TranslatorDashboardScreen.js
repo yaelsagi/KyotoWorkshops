@@ -14,7 +14,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { StarIcon } from "react-native-heroicons/outline";
+import { StarIcon } from "react-native-heroicons/solid";
 import { useUser } from "../context/UserContext";
 import { updateTranslatorProfile, fetchTranslatorReviews } from "../services/translatorService";
 import KeyboardDoneBar from "../components/KeyboardDoneBar";
@@ -22,6 +22,38 @@ import { COLORS } from "../styles/colors";
 
 const DAY_OPTIONS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const NUMERIC_INPUT_ACCESSORY_ID = "translatorDashboardNumericAccessory";
+
+function toMinutes(timeValue) {
+  const text = String(timeValue || "").trim();
+  if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(text)) {
+    return -1;
+  }
+
+  const [hours, minutes] = text.split(":").map(Number);
+  return (hours * 60) + minutes;
+}
+
+function hasOverlap(existingSlots, candidateSlot) {
+  const candidateFrom = toMinutes(candidateSlot.from);
+  const candidateTo = toMinutes(candidateSlot.to);
+  if (candidateFrom < 0 || candidateTo < 0) {
+    return false;
+  }
+
+  return (existingSlots || []).some((slot) => {
+    if (String(slot?.day || "") !== String(candidateSlot.day || "")) {
+      return false;
+    }
+
+    const from = toMinutes(slot?.from);
+    const to = toMinutes(slot?.to);
+    if (from < 0 || to < 0) {
+      return false;
+    }
+
+    return candidateFrom < to && from < candidateTo;
+  });
+}
 
 export default function TranslatorDashboardScreen() {
   const { currentUser, updateUser } = useUser();
@@ -61,11 +93,37 @@ export default function TranslatorDashboardScreen() {
 
   // Add availability block
   const addAvailabilityBlock = () => {
+    const fromMinutes = toMinutes(fromTime);
+    const toMinutesValue = toMinutes(toTime);
+    if (fromMinutes < 0 || toMinutesValue < 0) {
+      Alert.alert("Invalid Time", "Please use 24-hour HH:MM format (example: 09:30).");
+      return;
+    }
+
+    if (toMinutesValue <= fromMinutes) {
+      Alert.alert("Invalid Time Range", "End time must be after start time.");
+      return;
+    }
+
     const block = {
       day: selectedDay,
-      from: fromTime,
-      to: toTime,
+      from: fromTime.trim(),
+      to: toTime.trim(),
     };
+
+    const duplicate = availabilitySlots.some(
+      (slot) => slot.day === block.day && slot.from === block.from && slot.to === block.to
+    );
+    if (duplicate) {
+      Alert.alert("Duplicate Slot", "This availability block is already added.");
+      return;
+    }
+
+    if (hasOverlap(availabilitySlots, block)) {
+      Alert.alert("Overlapping Slot", "This time overlaps an existing slot for the same day.");
+      return;
+    }
+
     setAvailabilitySlots((prev) => [...prev, block]);
   };
 
@@ -84,6 +142,16 @@ export default function TranslatorDashboardScreen() {
     const parsedRate = hourlyRateYen ? Number(hourlyRateYen) : null;
     if (hourlyRateYen && (!Number.isFinite(parsedRate) || parsedRate <= 0)) {
       Alert.alert("Invalid Price", "Please enter a valid hourly rate.");
+      return;
+    }
+
+    const invalidSlot = (availabilitySlots || []).find((slot) => {
+      const fromMinutes = toMinutes(slot?.from);
+      const toMinutesValue = toMinutes(slot?.to);
+      return fromMinutes < 0 || toMinutesValue < 0 || toMinutesValue <= fromMinutes;
+    });
+    if (invalidSlot) {
+      Alert.alert("Invalid Slot", `Please fix invalid slot: ${invalidSlot.day} ${invalidSlot.from}-${invalidSlot.to}`);
       return;
     }
 

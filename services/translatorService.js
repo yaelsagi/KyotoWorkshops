@@ -185,6 +185,28 @@ export async function reviewTranslatorApplication(userId, approved) {
   const now = new Date().toISOString();
   const previousApplication = current.translatorApplication || DEFAULT_TRANSLATOR_APPLICATION;
   const previousProfile = current.translatorProfile || DEFAULT_TRANSLATOR_PROFILE;
+  const applicationLanguages = (previousApplication.targetLanguages || [])
+    .map((language) => {
+      const levelMatch = (previousApplication.otherLanguageLevels || []).find(
+        (item) => item?.language === language
+      );
+      return {
+        language,
+        level: levelMatch?.level || "",
+      };
+    })
+    .filter((item) => item.language);
+
+  const applicationAvailability = Array.isArray(previousApplication.availability)
+    ? previousApplication.availability
+    : Array.isArray(previousApplication.availabilitySlots)
+      ? previousApplication.availabilitySlots
+      : [];
+
+  const approvedHourlyRate = Number(previousApplication.hourlyRateYen);
+  const hourlyRateYen = Number.isFinite(approvedHourlyRate) && approvedHourlyRate > 0
+    ? approvedHourlyRate
+    : previousProfile.hourlyRateYen;
 
   // Approve or reject the application
   const nextStatus = approved ? "approved" : "rejected";
@@ -201,6 +223,16 @@ export async function reviewTranslatorApplication(userId, approved) {
     translatorProfile: {
       ...DEFAULT_TRANSLATOR_PROFILE,
       ...previousProfile,
+      languages: applicationLanguages.length > 0 ? applicationLanguages : previousProfile.languages,
+      wardsAvailable:
+        (previousApplication.wardsAvailable || []).length > 0
+          ? previousApplication.wardsAvailable
+          : previousProfile.wardsAvailable,
+      availability: applicationAvailability.length > 0 ? applicationAvailability : previousProfile.availability,
+      availabilitySlots:
+        applicationAvailability.length > 0 ? applicationAvailability : previousProfile.availabilitySlots,
+      hourlyRateYen,
+      hourlyRate: hourlyRateYen || previousProfile.hourlyRate,
       isApproved: Boolean(approved),
       enabled: Boolean(approved),
     },
@@ -284,7 +316,35 @@ function timeToMinutes(timeStr) {
   if (!timeStr || typeof timeStr !== "string") return -1;
   const [h, m] = timeStr.split(":").map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return -1;
+  if (h < 0 || h > 23 || m < 0 || m > 59) return -1;
   return h * 60 + m;
+}
+
+function getWeekdayFromSessionDate(sessionDate) {
+  const raw = String(sessionDate || "").trim();
+  if (!raw) {
+    return null;
+  }
+
+  // Parse plain YYYY-MM-DD in local time to avoid timezone day-shift.
+  const ymdMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (ymdMatch) {
+    const year = Number(ymdMatch[1]);
+    const month = Number(ymdMatch[2]) - 1;
+    const day = Number(ymdMatch[3]);
+    const localDate = new Date(year, month, day, 12, 0, 0);
+    if (!Number.isNaN(localDate.getTime())) {
+      return localDate.toLocaleDateString("en-US", { weekday: "long" });
+    }
+    return null;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toLocaleDateString("en-US", { weekday: "long" });
 }
 
 // Match translators accounting for session weekday and time range availability.
@@ -298,14 +358,7 @@ export function matchTranslatorsForSession({ translators, requestedLanguage, war
   let sessionDay = null;
   let sessionMinutes = -1;
   if (sessionDate) {
-    try {
-      const d = new Date(sessionDate);
-      if (!Number.isNaN(d.getTime())) {
-        sessionDay = d.toLocaleDateString("en-US", { weekday: "long" }); // "Monday", "Tuesday" …
-      }
-    } catch {
-      // Ignore parse error; availability check will be skipped
-    }
+    sessionDay = getWeekdayFromSessionDate(sessionDate);
   }
   if (sessionTime) {
     sessionMinutes = timeToMinutes(sessionTime);
@@ -331,16 +384,29 @@ export function matchTranslatorsForSession({ translators, requestedLanguage, war
       // Availability check (weekday + time range)
       const availability = translator?.translatorProfile?.availability || translator?.translatorProfile?.availabilitySlots || [];
       if (sessionDay) {
-        const dayMatch = availability.find(
+        // Check all same-day slots (not just the first one)
+        const sameDaySlots = availability.filter(
           (slot) => String(slot?.day || "").toLowerCase() === sessionDay.toLowerCase()
         );
-        if (!dayMatch) return false;
+
+        // If translator has no availability data, fallback to language + ward match.
+        if (sameDaySlots.length === 0 && availability.length > 0) {
+          return false;
+        }
 
         // Check session time falls within the translator's time window
-        if (sessionMinutes >= 0) {
-          const fromMin = timeToMinutes(dayMatch.from);
-          const toMin = timeToMinutes(dayMatch.to);
-          if (fromMin >= 0 && toMin >= 0 && (sessionMinutes < fromMin || sessionMinutes > toMin)) {
+        if (sessionMinutes >= 0 && sameDaySlots.length > 0) {
+          const hasMatchingSlot = sameDaySlots.some((slot) => {
+            const fromMin = timeToMinutes(slot?.from);
+            const toMin = timeToMinutes(slot?.to);
+            if (fromMin < 0 || toMin < 0 || toMin <= fromMin) {
+              return false;
+            }
+
+            return sessionMinutes >= fromMin && sessionMinutes <= toMin;
+          });
+
+          if (!hasMatchingSlot) {
             return false;
           }
         }

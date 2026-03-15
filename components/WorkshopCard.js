@@ -4,6 +4,7 @@ import { View, Text, Pressable, StyleSheet, Platform, ActivityIndicator } from '
 import { Image } from 'expo-image';
 import { CameraIcon, HeartIcon } from 'react-native-heroicons/outline';
 import { COLORS } from '../styles/colors';
+import TopWorkshopTag from './TopWorkshopTag';
 
 export default function WorkshopCard({ workshop, onPress, onFavouriteToggle }) {
   // Track image loading state per card instance
@@ -47,9 +48,7 @@ export default function WorkshopCard({ workshop, onPress, onFavouriteToggle }) {
         )}
 
         {workshop.isTop && (
-          <View style={styles.topBadge}>
-            <Text style={styles.topBadgeText}>Top Workshop</Text>
-          </View>
+          <TopWorkshopTag />
         )}
       </View>
 
@@ -163,31 +162,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.primaryText,
-  },
-  topBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        shadowOffset: { width: 0, height: 2 },
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  topBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: COLORS.primaryText,
-    letterSpacing: 0.3,
   },
 });

@@ -26,6 +26,40 @@ import { submitTranslatorApplication } from "../services/translatorService";
 import { uploadTranslatorProofDocument } from "../services/storageService";
 import { useUser } from "../context/UserContext";
 
+const DAY_OPTIONS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function toMinutes(timeValue) {
+  const text = String(timeValue || "").trim();
+  if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(text)) {
+    return -1;
+  }
+
+  const [hours, minutes] = text.split(":").map(Number);
+  return (hours * 60) + minutes;
+}
+
+function hasOverlap(existingSlots, candidateSlot) {
+  const candidateFrom = toMinutes(candidateSlot.from);
+  const candidateTo = toMinutes(candidateSlot.to);
+  if (candidateFrom < 0 || candidateTo < 0) {
+    return false;
+  }
+
+  return (existingSlots || []).some((slot) => {
+    if (String(slot?.day || "") !== String(candidateSlot.day || "")) {
+      return false;
+    }
+
+    const from = toMinutes(slot?.from);
+    const to = toMinutes(slot?.to);
+    if (from < 0 || to < 0) {
+      return false;
+    }
+
+    return candidateFrom < to && from < candidateTo;
+  });
+}
+
 export default function TranslatorSetupScreen({ navigation }) {
   const { currentUser, updateUser } = useUser();
 
@@ -36,6 +70,11 @@ export default function TranslatorSetupScreen({ navigation }) {
   const [targetLanguages, setTargetLanguages] = useState([]);
   const [languageLevels, setLanguageLevels] = useState({});
   const [wardsAvailable, setWardsAvailable] = useState([]);
+  const [hourlyRateYen, setHourlyRateYen] = useState("");
+  const [availabilitySlots, setAvailabilitySlots] = useState([]);
+  const [selectedDay, setSelectedDay] = useState("Saturday");
+  const [fromTime, setFromTime] = useState("10:00");
+  const [toTime, setToTime] = useState("16:00");
   const [interviewAt, setInterviewAt] = useState("");
   const [jlptDocumentURL, setJlptDocumentURL] = useState(null);
   const [otherProofDocumentURLs, setOtherProofDocumentURLs] = useState([]);
@@ -70,6 +109,50 @@ export default function TranslatorSetupScreen({ navigation }) {
   // Save language level
   const setLanguageLevel = (language, level) => {
     setLanguageLevels((prev) => ({ ...prev, [language]: level }));
+  };
+
+  const addAvailabilityBlock = () => {
+    if (!selectedDay || !fromTime || !toTime) {
+      Alert.alert("Missing Information", "Please set day, start time, and end time.");
+      return;
+    }
+
+    const fromMinutes = toMinutes(fromTime);
+    const toMinutesValue = toMinutes(toTime);
+    if (fromMinutes < 0 || toMinutesValue < 0) {
+      Alert.alert("Invalid Time", "Please use 24-hour HH:MM format (example: 09:30).");
+      return;
+    }
+
+    if (toMinutesValue <= fromMinutes) {
+      Alert.alert("Invalid Time Range", "End time must be after start time.");
+      return;
+    }
+
+    const block = {
+      day: selectedDay,
+      from: fromTime.trim(),
+      to: toTime.trim(),
+    };
+
+    const duplicate = availabilitySlots.some(
+      (slot) => slot.day === block.day && slot.from === block.from && slot.to === block.to
+    );
+    if (duplicate) {
+      Alert.alert("Duplicate Slot", "This availability block is already added.");
+      return;
+    }
+
+    if (hasOverlap(availabilitySlots, block)) {
+      Alert.alert("Overlapping Slot", "This time overlaps an existing slot for the same day.");
+      return;
+    }
+
+    setAvailabilitySlots((prev) => [...prev, block]);
+  };
+
+  const removeAvailabilityBlock = (index) => {
+    setAvailabilitySlots((prev) => prev.filter((_, idx) => idx !== index));
   };
 
   // Upload proof from library
@@ -166,6 +249,27 @@ export default function TranslatorSetupScreen({ navigation }) {
       return;
     }
 
+    if (availabilitySlots.length === 0) {
+      Alert.alert("Missing Information", "Please add at least one availability slot.");
+      return;
+    }
+
+    const invalidSlot = availabilitySlots.find((slot) => {
+      const fromMinutes = toMinutes(slot?.from);
+      const toMinutesValue = toMinutes(slot?.to);
+      return fromMinutes < 0 || toMinutesValue < 0 || toMinutesValue <= fromMinutes;
+    });
+    if (invalidSlot) {
+      Alert.alert("Invalid Slot", `Please fix invalid slot: ${invalidSlot.day} ${invalidSlot.from}-${invalidSlot.to}`);
+      return;
+    }
+
+    const parsedRate = Number(hourlyRateYen);
+    if (!Number.isFinite(parsedRate) || parsedRate <= 0) {
+      Alert.alert("Missing Information", "Please enter your hourly rate in yen.");
+      return;
+    }
+
     if (!interviewAt) {
       Alert.alert("Missing Information", "Please choose an interview slot.");
       return;
@@ -182,6 +286,10 @@ export default function TranslatorSetupScreen({ navigation }) {
         jlptDocumentURL,
         otherProofDocumentURLs,
         wardsAvailable,
+        availability: availabilitySlots,
+        availabilitySlots,
+        hourlyRateYen: parsedRate,
+        hourlyRate: parsedRate,
         interviewAt,
         notes: notes.trim() || null,
       };
@@ -338,6 +446,75 @@ export default function TranslatorSetupScreen({ navigation }) {
           })}
         </View>
 
+        <Text style={styles.label}>Availability slots</Text>
+        <Text style={styles.helperText}>Choose the days and time windows you can work</Text>
+
+        <Text style={styles.levelLabel}>Day</Text>
+        <View style={styles.chipsWrap}>
+          {DAY_OPTIONS.map((day) => {
+            const selected = selectedDay === day;
+            return (
+              <Pressable
+                key={day}
+                style={[styles.smallChip, selected && styles.chipSelected]}
+                onPress={() => setSelectedDay(day)}
+              >
+                <Text style={[styles.smallChipText, selected && styles.chipTextSelected]}>{day}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={styles.rowButtons}>
+          <View style={styles.halfField}>
+            <Text style={styles.levelLabel}>From</Text>
+            <TextInput
+              style={styles.input}
+              value={fromTime}
+              onChangeText={setFromTime}
+              placeholder="10:00"
+              placeholderTextColor="#999"
+            />
+          </View>
+          <View style={styles.halfField}>
+            <Text style={styles.levelLabel}>To</Text>
+            <TextInput
+              style={styles.input}
+              value={toTime}
+              onChangeText={setToTime}
+              placeholder="16:00"
+              placeholderTextColor="#999"
+            />
+          </View>
+        </View>
+
+        <Pressable style={styles.secondaryButton} onPress={addAvailabilityBlock}>
+          <Text style={styles.secondaryButtonText}>Add availability block</Text>
+        </Pressable>
+
+        {availabilitySlots.length === 0 ? (
+          <Text style={styles.helperText}>No availability slots added yet</Text>
+        ) : (
+          availabilitySlots.map((slot, index) => (
+            <View key={`${slot.day}-${slot.from}-${slot.to}-${index}`} style={styles.slotRow}>
+              <Text style={styles.slotText}>{slot.day} {slot.from} - {slot.to}</Text>
+              <Pressable onPress={() => removeAvailabilityBlock(index)}>
+                <Text style={styles.removeText}>Remove</Text>
+              </Pressable>
+            </View>
+          ))
+        )}
+
+        <Text style={styles.label}>Hourly rate (JPY)</Text>
+        <TextInput
+          style={styles.input}
+          value={hourlyRateYen}
+          onChangeText={(text) => setHourlyRateYen(text.replace(/[^0-9]/g, ""))}
+          placeholder="e.g. 4500"
+          placeholderTextColor="#999"
+          keyboardType="numeric"
+        />
+
         <Text style={styles.label}>Interview slot</Text>
         <View style={styles.chipsWrap}>
           {INTERVIEW_SLOT_OPTIONS.map((slot) => {
@@ -466,6 +643,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
+  halfField: {
+    flex: 1,
+  },
   secondaryButton: {
     flex: 1,
     borderWidth: 1,
@@ -483,6 +663,28 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 12,
     color: "#666",
+  },
+  slotRow: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#E6E2DA",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#FBFAF7",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  slotText: {
+    fontSize: 13,
+    color: "#1F1F1F",
+    fontWeight: "600",
+  },
+  removeText: {
+    color: "#B42318",
+    fontSize: 12,
+    fontWeight: "700",
   },
   primaryButton: {
     marginTop: 20,

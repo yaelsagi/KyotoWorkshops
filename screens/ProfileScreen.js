@@ -50,6 +50,45 @@ export default function ProfileScreen({ navigation }) {
   const isHostEnabled = currentUser?.roles?.host === true;
   const isAdmin = currentUser?.roles?.admin === true;
 
+  const translatorStatusBanner = (() => {
+    if (translatorStatus === "none") {
+      return null;
+    }
+
+    if (translatorStatus === "approved") {
+      return {
+        text: "Translator approved. You can receive booking assignments.",
+        style: styles.translatorBannerApproved,
+        textStyle: styles.translatorBannerApprovedText,
+      };
+    }
+
+    if (translatorStatus === "rejected") {
+      return {
+        text: "Application rejected. You can update details and apply again.",
+        style: styles.translatorBannerRejected,
+        textStyle: styles.translatorBannerRejectedText,
+      };
+    }
+
+    if (translatorStatus === "interview_scheduled") {
+      const interviewAt = currentUser?.translatorApplication?.interviewAt;
+      return {
+        text: interviewAt
+          ? `Interview scheduled: ${interviewAt}. Awaiting final review.`
+          : "Interview scheduled. Awaiting final review.",
+        style: styles.translatorBannerPending,
+        textStyle: styles.translatorBannerPendingText,
+      };
+    }
+
+    return {
+      text: "Application received. Awaiting interview scheduling.",
+      style: styles.translatorBannerPending,
+      textStyle: styles.translatorBannerPendingText,
+    };
+  })();
+
   // Prevent indefinite loading states when network/storage operations hang
   const withTimeout = async (promise, timeoutMs, timeoutMessage) => {
     let timeoutId;
@@ -477,6 +516,14 @@ export default function ProfileScreen({ navigation }) {
         <Text style={styles.userEmail}>{authUser?.email || 'user@example.com'}</Text>
       </View>
 
+      {translatorStatusBanner ? (
+        <View style={[styles.translatorBanner, translatorStatusBanner.style]}>
+          <Text style={[styles.translatorBannerText, translatorStatusBanner.textStyle]}>
+            {translatorStatusBanner.text}
+          </Text>
+        </View>
+      ) : null}
+
       {/* Action Cards */}
       <View style={styles.statsContainer}>
         <Pressable 
@@ -652,8 +699,41 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: "row",
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: 16,
     gap: 12,
+  },
+  translatorBanner: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  translatorBannerText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  translatorBannerPending: {
+    backgroundColor: COLORS.pendingBackground,
+    borderColor: COLORS.pending,
+  },
+  translatorBannerPendingText: {
+    color: COLORS.pending,
+  },
+  translatorBannerApproved: {
+    backgroundColor: COLORS.approvedBackground,
+    borderColor: COLORS.approved,
+  },
+  translatorBannerApprovedText: {
+    color: COLORS.approved,
+  },
+  translatorBannerRejected: {
+    backgroundColor: COLORS.rejectedBackground,
+    borderColor: COLORS.danger,
+  },
+  translatorBannerRejectedText: {
+    color: COLORS.danger,
   },
   statCard: {
     flex: 1,

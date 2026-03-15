@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# local sensitive keys (never commit)
+key_do not submit/
+firebase-service-account.json

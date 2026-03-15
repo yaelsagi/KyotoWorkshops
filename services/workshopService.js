@@ -99,7 +99,66 @@ function toWorkshopCategory(workshop) {
   return null;
 }
 
-function normalizeWorkshopRecord(workshop) {
+function formatLocalDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getNextDateForWeekday(targetWeekday, weekOffset = 0) {
+  const today = new Date();
+  const currentWeekday = today.getDay();
+  let dayOffset = (targetWeekday - currentWeekday + 7) % 7;
+  if (dayOffset === 0) {
+    dayOffset = 7;
+  }
+
+  dayOffset += weekOffset * 7;
+
+  const date = new Date(today);
+  date.setHours(12, 0, 0, 0);
+  date.setDate(today.getDate() + dayOffset);
+  return formatLocalDate(date);
+}
+
+function generateSessions(workshop) {
+  if (!workshop || typeof workshop !== 'object') {
+    return [];
+  }
+
+  const rawSessions = Array.isArray(workshop.sessions) ? workshop.sessions.filter(Boolean) : [];
+  if (rawSessions.length > 0) {
+    return rawSessions;
+  }
+
+  const availableSlots = Number(workshop.availableSlots);
+  if (!Number.isFinite(availableSlots) || availableSlots <= 0) {
+    return [];
+  }
+
+  const sessionTemplates = workshop.id === 'workshop_tea_ceremony'
+    ? [
+        { weekday: 3, time: '10:30' }, // Wednesday
+        { weekday: 6, time: '14:00' }, // Saturday
+        { weekday: 0, time: '11:00' }, // Sunday
+        { weekday: 2, time: '15:30' }, // Tuesday
+      ]
+    : [
+        { weekday: 6, time: '10:00' },
+        { weekday: 0, time: '13:00' },
+        { weekday: 3, time: '11:00' },
+      ];
+
+  const count = Math.min(sessionTemplates.length, Math.max(1, availableSlots));
+  return sessionTemplates.slice(0, count).map((template, index) => ({
+    id: `${workshop.id}_session_${index + 1}`,
+    date: getNextDateForWeekday(template.weekday, Math.floor(index / 2)),
+    time: template.time,
+  }));
+}
+
+function normalizeWorkshop(workshop) {
   const normalized = normalizeWorkshopLocation(workshop);
   if (!normalized || typeof normalized !== 'object') {
     return normalized;
@@ -114,6 +173,9 @@ function normalizeWorkshopRecord(workshop) {
   return {
     ...normalized,
     categories,
+    sessions: Array.isArray(normalized.sessions) && normalized.sessions.length > 0
+      ? normalized.sessions
+      : generateSessions(normalized),
     category: toWorkshopCategory({ ...normalized, categories }),
     status: normalized.status || WORKSHOP_STATUS.APPROVED,
     customCategorySuggestion: normalizedCustomCategorySuggestion || null,
@@ -288,7 +350,7 @@ export async function fetchWorkshops() {
     
     // Convert Firebase documents to plain objects
     const workshops = snapshot.docs.map(document => {
-      const data = normalizeWorkshopRecord({ id: document.id, ...document.data() });
+      const data = normalizeWorkshop({ id: document.id, ...document.data() });
 
       if (data.status !== WORKSHOP_STATUS.APPROVED) {
         return null;
@@ -351,7 +413,7 @@ export async function fetchWorkshopById(workshopId) {
       return null;
     }
     
-    const workshopData = normalizeWorkshopRecord({ id: snapshot.id, ...snapshot.data() });
+    const workshopData = normalizeWorkshop({ id: snapshot.id, ...snapshot.data() });
 
     if (workshopData.status !== WORKSHOP_STATUS.APPROVED) {
       return null;
@@ -383,7 +445,7 @@ export async function searchWorkshops(filters = {}) {
     
     // Convert and validate results
     const results = snapshot.docs
-      .map(doc => normalizeWorkshopRecord({ id: doc.id, ...doc.data() }))
+      .map(doc => normalizeWorkshop({ id: doc.id, ...doc.data() }))
       .filter(workshop => {
         if (workshop.status !== WORKSHOP_STATUS.APPROVED) {
           return false;
@@ -527,7 +589,7 @@ export async function updateWorkshop(workshopId, updates) {
       throw new Error('Workshop not found');
     }
 
-    const existingWorkshop = normalizeWorkshopRecord({
+    const existingWorkshop = normalizeWorkshop({
       id: existingSnapshot.id,
       ...existingSnapshot.data(),
     });
@@ -642,7 +704,7 @@ export async function fetchWorkshopsByOwner(ownerId) {
     const workshops = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      workshops.push(normalizeWorkshopRecord({
+      workshops.push(normalizeWorkshop({
         id: doc.id,
         ...data,
       }));
@@ -661,7 +723,7 @@ export async function fetchPendingWorkshopsForReview() {
     const pendingQuery = query(workshopsCollection, where('status', '==', WORKSHOP_STATUS.PENDING));
     const querySnapshot = await getDocs(pendingQuery);
 
-    return querySnapshot.docs.map((document) => normalizeWorkshopRecord({
+    return querySnapshot.docs.map((document) => normalizeWorkshop({
       id: document.id,
       ...document.data(),
     }));

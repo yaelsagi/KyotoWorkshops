@@ -9,7 +9,8 @@ import {
   deleteUser,
   updatePassword,
   reauthenticateWithCredential,
-  EmailAuthProvider
+  EmailAuthProvider,
+  fetchSignInMethodsForEmail
 } from 'firebase/auth';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebase';
@@ -23,6 +24,10 @@ export async function signUpWithEmail(email, password, displayName) {
     throw new Error('Email and password are required');
   }
 
+  if (!String(email).trim()) {
+    throw new Error('Email cannot be empty');
+  }
+
   if (!displayName || !displayName.trim()) {
     throw new Error('Display name is required');
   }
@@ -32,9 +37,16 @@ export async function signUpWithEmail(email, password, displayName) {
     throw new Error(passwordError);
   }
 
+  const cleanedEmail = String(email).trim().toLowerCase();
+
   try {
+    const existingSignInMethods = await fetchSignInMethodsForEmail(auth, cleanedEmail);
+    if (existingSignInMethods.length > 0) {
+      throw new Error('An account using this email already exists.');
+    }
+
     // Create Firebase Auth user account
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(auth, cleanedEmail, password);
     const user = userCredential.user;
 
     // Update the user's display name in Firebase Auth
@@ -63,7 +75,7 @@ export async function signUpWithEmail(email, password, displayName) {
     
     // Friendly error messages
     if (error.code === 'auth/email-already-in-use') {
-      throw new Error('This email is already registered');
+      throw new Error('An account using this email already exists.');
     } else if (error.code === 'auth/invalid-email') {
       throw new Error('Invalid email address');
     } else if (error.code === 'auth/weak-password') {
@@ -190,8 +202,14 @@ export async function signInWithEmail(email, password) {
     throw new Error('Email and password are required');
   }
 
+  if (!String(email).trim()) {
+    throw new Error('Email cannot be empty');
+  }
+
+  const cleanedEmail = String(email).trim().toLowerCase();
+
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(auth, cleanedEmail, password);
     return userCredential.user;
   } catch (error) {
     console.error('Sign in failed:', error);

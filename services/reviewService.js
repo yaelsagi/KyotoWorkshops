@@ -17,6 +17,27 @@ import { collection, getDocs, addDoc, query, where, orderBy, doc, deleteDoc } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../firebase/firebase';
 
+function sortReviewsByCreatedAtDesc(reviews) {
+  return [...reviews].sort((left, right) => {
+    const leftTime = Date.parse(left?.createdAt || '');
+    const rightTime = Date.parse(right?.createdAt || '');
+
+    if (Number.isNaN(leftTime) && Number.isNaN(rightTime)) {
+      return 0;
+    }
+
+    if (Number.isNaN(leftTime)) {
+      return 1;
+    }
+
+    if (Number.isNaN(rightTime)) {
+      return -1;
+    }
+
+    return rightTime - leftTime;
+  });
+}
+
 // Makes sure review data is complete before saving
 function validateReview(review) {
   const errors = [];
@@ -65,25 +86,33 @@ export async function fetchReviewsForWorkshop(workshopId) {
   try {
     // Firebase-only source for production consistency across devices
     const reviewsCollection = collection(db, 'reviews');
-    
-    // Get reviews for this workshop only, newest first
-    const reviewQuery = query(
-      reviewsCollection,
-      where('workshopId', '==', workshopId),
-      orderBy('createdAt', 'desc')
-    );
-    
-    const snapshot = await getDocs(reviewQuery);
+
+    let snapshot;
+    try {
+      const indexedQuery = query(
+        reviewsCollection,
+        where('workshopId', '==', workshopId),
+        orderBy('createdAt', 'desc')
+      );
+      snapshot = await getDocs(indexedQuery);
+    } catch (queryError) {
+      const fallbackQuery = query(
+        reviewsCollection,
+        where('workshopId', '==', workshopId)
+      );
+      snapshot = await getDocs(fallbackQuery);
+      console.log('Reviews query fallback (no index):', queryError.message);
+    }
     
     if (snapshot.empty) {
       return [];
     }
     
     // Convert documents and validate each one
-    const reviews = snapshot.docs.map(document => ({
+    const reviews = sortReviewsByCreatedAtDesc(snapshot.docs.map(document => ({
       id: document.id,
       ...document.data()
-    }));
+    })));
     
     // Filter out any reviews with corrupt data
     const filtered = reviews.filter(review => {

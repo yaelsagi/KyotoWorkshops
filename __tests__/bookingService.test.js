@@ -11,10 +11,15 @@ import {
 } from '../services/bookingService';
 import { getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as workshopService from '../services/workshopService';
 
 jest.mock('firebase/firestore');
 jest.mock('@react-native-async-storage/async-storage');
 jest.mock('../firebase/firebase', () => ({ db: {} }));
+jest.mock('../services/workshopService', () => ({
+  fetchWorkshopById: jest.fn(),
+  fetchWorkshops: jest.fn(),
+}));
 
 describe('Booking Validation', () => {
   
@@ -97,6 +102,16 @@ describe('Creating Bookings - Async Operations', () => {
   beforeEach(() => {
     // Clear AsyncStorage for each test
     AsyncStorage.setItem.mockClear();
+    workshopService.fetchWorkshopById.mockResolvedValue({
+      id: 'workshop_kintsugi',
+      title: 'Kintsugi Basics',
+      category: 'Kintsugi',
+      ward: 'Nakagyo',
+      priceYen: 6500,
+      images: ['https://example.com/workshop.jpg'],
+      lat: 35.01,
+      lng: 135.76,
+    });
   });
   
   // Should save to Firebase and AsyncStorage
@@ -145,6 +160,45 @@ describe('Creating Bookings - Async Operations', () => {
     };
     
     await expect(createBooking(booking)).rejects.toThrow('Could not complete your booking');
+  });
+
+  test('sets translatorStatus to assigned when translatorId is included', async () => {
+    addDoc.mockResolvedValue({ id: 'booking_with_translator' });
+    AsyncStorage.getItem.mockResolvedValue(null);
+
+    const bookingData = {
+      workshopId: 'workshop_kintsugi',
+      userId: 'user_with_translator',
+      status: 'confirmed',
+      translatorRequested: true,
+      requestedLanguage: 'English',
+      translatorId: 'translator_lorem_01',
+      priceYen: 6500,
+    };
+
+    const saved = await createBooking(bookingData);
+
+    expect(saved.translatorStatus).toBe('assigned');
+    expect(saved.translatorId).toBe('translator_lorem_01');
+  });
+
+  test('sets translatorStatus to requested when translator is requested without match', async () => {
+    addDoc.mockResolvedValue({ id: 'booking_translator_requested' });
+    AsyncStorage.getItem.mockResolvedValue(null);
+
+    const bookingData = {
+      workshopId: 'workshop_kintsugi',
+      userId: 'user_waiting_for_match',
+      status: 'confirmed',
+      translatorRequested: true,
+      requestedLanguage: 'French',
+      priceYen: 6500,
+    };
+
+    const saved = await createBooking(bookingData);
+
+    expect(saved.translatorStatus).toBe('requested');
+    expect(saved.translatorId).toBeNull();
   });
 });
 

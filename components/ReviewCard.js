@@ -1,7 +1,7 @@
 // components/ReviewCard.js
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { StarIcon } from "react-native-heroicons/outline";
+import { StarIcon } from "react-native-heroicons/solid";
 import { COLORS } from "../styles/colors";
 
 // Review card used in horizontal scroll (WorkshopDetails) and full list (AllReviews)
