@@ -1,3 +1,4 @@
+﻿// Progress: this service is implemented and currently supports core app logic.
 import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
 import { storage } from '../firebase/firebase';
 
@@ -117,3 +118,4 @@ export default {
   deleteUserPhotoFolder,
   uploadTranslatorProofDocument,
 };
+

@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 // screens/AllReviewsScreen.js
 import React from "react";
 import { View, Text, StyleSheet, Platform, FlatList } from "react-native";
@@ -69,3 +70,4 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 });
+

@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 

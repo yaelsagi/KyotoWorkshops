@@ -1,3 +1,4 @@
+﻿// Progress: this service is implemented and currently supports core app logic.
 // Review service
 // Manages reading and writing workshop reviews with validation
 //
@@ -237,3 +238,4 @@ export function calculateAverageRating(reviews) {
 }
 
 export { validateReview };
+

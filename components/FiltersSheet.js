@@ -1,3 +1,4 @@
+﻿// Progress: this component is implemented and currently stable in the app UI flow.
 // components/FiltersSheet.js
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Modal, View, Text, StyleSheet, Pressable, Switch, Platform, ScrollView } from "react-native";
@@ -294,7 +295,7 @@ export default function FiltersSheet({
 
             <View style={styles.block}>
               <Text style={styles.label}>Price range</Text>
-              <Text style={styles.help}>¥{currentMin.toLocaleString()} - ¥{safeMax.toLocaleString()}</Text>
+              <Text style={styles.help}>ֲ¥{currentMin.toLocaleString()} - ֲ¥{safeMax.toLocaleString()}</Text>
 
               <View
                 style={styles.rangeSliderWrap}

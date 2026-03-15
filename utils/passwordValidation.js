@@ -1,3 +1,4 @@
+﻿// Progress: this utility module is implemented and currently used by app features.
 export const MIN_PASSWORD_LENGTH = 8;
 export const PASSWORD_REQUIREMENTS_TEXT = "Use at least 8 characters including letters and numbers.";
 

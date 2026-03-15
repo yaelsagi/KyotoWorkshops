@@ -1,3 +1,4 @@
+﻿// Progress: this component is implemented and currently stable in the app UI flow.
 // Reusable password input with show/hide eye icon toggle
 import React, { useState } from 'react';
 import { View, TextInput, Pressable, StyleSheet } from 'react-native';
@@ -73,3 +74,4 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
 });
+

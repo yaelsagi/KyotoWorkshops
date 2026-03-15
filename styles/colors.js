@@ -1,3 +1,4 @@
+﻿// Progress: this style module is implemented and currently applied in the app UI.
 //colors used in the app:
 
 export const COLORS = {

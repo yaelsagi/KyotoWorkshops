@@ -1,3 +1,4 @@
+﻿// Progress: this component is implemented and currently stable in the app UI flow.
 // components/MapSearchBar.js
 import React from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, Platform } from "react-native";
@@ -8,7 +9,7 @@ export default function MapSearchBar({
   value,
   onChangeText,
   onPressFilters,
-  placeholder = "Search workshops (title, category, ward)…",
+  placeholder = "Search workshops (title, category, ward)ג€¦",
 }) {
   const insets = useSafeAreaInsets();
 

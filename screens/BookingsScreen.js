@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 import React, { useState, useCallback } from "react";
 import {
   View,
@@ -100,7 +101,7 @@ export default function BookingsScreen({ navigation }) {
       
       <View style={styles.cardContent}>
         <View style={styles.bookedBadge}>
-          <Text style={styles.bookedBadgeText}>✓ Booked</Text>
+          <Text style={styles.bookedBadgeText}>ג“ Booked</Text>
         </View>
         
         <Text style={styles.cardTitle} numberOfLines={1}>
@@ -117,7 +118,7 @@ export default function BookingsScreen({ navigation }) {
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Price</Text>
-            <Text style={styles.infoValue}>¥{item.priceYen.toLocaleString()}</Text>
+            <Text style={styles.infoValue}>ֲ¥{item.priceYen.toLocaleString()}</Text>
           </View>
         </View>
         

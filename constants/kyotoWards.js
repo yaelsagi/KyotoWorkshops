@@ -1,23 +1,22 @@
+﻿// Special option used in filters to allow the user to see workshops from all wards
 export const ALL_OPTION = "All";
 
-export const KYOTO_WARD_DEFINITIONS = [
-  { key: "kita", en: "Kita", ja: "北区" },
-  { key: "kamigyo", en: "Kamigyo", ja: "上京区" },
-  { key: "sakyo", en: "Sakyo", ja: "左京区" },
-  { key: "nakagyo", en: "Nakagyo", ja: "中京区" },
-  { key: "shimogyo", en: "Shimogyo", ja: "下京区" },
-  { key: "minami", en: "Minami", ja: "南区" },
-  { key: "ukyo", en: "Ukyo", ja: "右京区" },
-  { key: "nishikyo", en: "Nishikyo", ja: "西京区" },
-  { key: "fushimi", en: "Fushimi", ja: "伏見区" },
-  { key: "yamashina", en: "Yamashina", ja: "山科区" },
-  { key: "higashiyama", en: "Higashiyama", ja: "東山区" },
+// List of Kyoto wards used in the application.
+// These names are used for workshop data, map filtering, and search.
+export const KYOTO_WARDS = [
+  "Fushimi",
+  "Higashiyama",
+  "Kamigyo",
+  "Kita",
+  "Minami",
+  "Nakagyo",
+  "Nishikyo",
+  "Sakyo",
+  "Shimogyo",
+  "Ukyo",
+  "Yamashina",
 ];
 
-export const KYOTO_WARDS = KYOTO_WARD_DEFINITIONS.map((ward) => ward.en);
-
+// List of filter options shown in the UI.
+// Adds the "All" option at the beginning so users can view workshops from every ward.
 export const KYOTO_WARD_OPTIONS = [ALL_OPTION, ...KYOTO_WARDS];
-
-export const JAPANESE_WARD_TO_ENGLISH = Object.fromEntries(
-  KYOTO_WARD_DEFINITIONS.map((ward) => [ward.ja, ward.en])
-);

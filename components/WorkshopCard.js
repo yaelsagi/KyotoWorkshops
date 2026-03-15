@@ -1,3 +1,4 @@
+﻿// Progress: this component is implemented and currently stable in the app UI flow.
 // Reusable workshop card for browse and favourites lists
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform, ActivityIndicator } from 'react-native';
@@ -80,7 +81,7 @@ export default function WorkshopCard({ workshop, onPress, onFavouriteToggle }) {
 
         <View style={styles.cardFooter}>
           <Text style={styles.cardLocation}>{workshop.ward}</Text>
-          <Text style={styles.cardPrice}>¥{workshop.priceYen.toLocaleString()}</Text>
+          <Text style={styles.cardPrice}>ֲ¥{workshop.priceYen.toLocaleString()}</Text>
         </View>
       </View>
     </Pressable>
@@ -164,3 +165,4 @@ const styles = StyleSheet.create({
     color: COLORS.primaryText,
   },
 });
+

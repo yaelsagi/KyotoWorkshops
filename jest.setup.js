@@ -1,3 +1,4 @@
+﻿// Progress: the test setup file is implemented and currently preparing stable test runs.
 // Jest setup for testing
 // Mocks Firebase and AsyncStorage so tests run fast without real database
 
@@ -47,3 +48,4 @@ jest.mock('expo-file-system', () => ({
   makeDirectoryAsync: jest.fn(async () => true),
   downloadAsync: jest.fn(async (_url, fileUri) => ({ uri: fileUri })),
 }));
+

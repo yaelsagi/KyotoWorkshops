@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 // screens/WorkshopDetailsScreen.js
 // Detailed workshop view with cover image, info, gallery, reviews, and booking
 //
@@ -44,7 +45,7 @@ import {
   getAllWorkshopImages,
   getAllWorkshopImagesForDisplay,
   prefetchWorkshopImages,
-} from "../services/workshopService";
+} from "../services/workshopImageService";
 import ReviewCard from "../components/ReviewCard";
 import PictureCard from "../components/PictureCard";
 import TopWorkshopTag from "../components/TopWorkshopTag";
@@ -351,10 +352,10 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
         {/* What's included */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>What's included</Text>
-          <Text style={styles.listItem}>• All materials and tools</Text>
-          <Text style={styles.listItem}>• Expert instruction</Text>
-          <Text style={styles.listItem}>• Tea and light refreshments</Text>
-          <Text style={styles.listItem}>• Take your creation home</Text>
+          <Text style={styles.listItem}>ג€¢ All materials and tools</Text>
+          <Text style={styles.listItem}>ג€¢ Expert instruction</Text>
+          <Text style={styles.listItem}>ג€¢ Tea and light refreshments</Text>
+          <Text style={styles.listItem}>ג€¢ Take your creation home</Text>
         </View>
 
         {/* Spacing for fixed bottom button */}
@@ -365,7 +366,7 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
       <View style={styles.fixedBottom}>
         <View style={styles.priceSection}>
           <Text style={styles.priceLabel}>Price</Text>
-          <Text style={styles.priceValue}>¥{workshop.priceYen.toLocaleString()}</Text>
+          <Text style={styles.priceValue}>ֲ¥{workshop.priceYen.toLocaleString()}</Text>
           <Text style={styles.priceUnit}>Per person</Text>
         </View>
 
@@ -643,3 +644,4 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
 });
+

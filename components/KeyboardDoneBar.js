@@ -1,3 +1,4 @@
+﻿// Progress: this component is implemented and currently stable in the app UI flow.
 import React from "react";
 import PropTypes from "prop-types";
 import {
@@ -63,3 +64,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
+

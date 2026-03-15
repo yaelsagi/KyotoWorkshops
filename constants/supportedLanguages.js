@@ -1,3 +1,4 @@
+﻿// Progress: this constants module is prepared and actively used across the app.
 export const SUPPORTED_LANGUAGES = [
   "Arabic",
   "Chinese",
@@ -8,3 +9,4 @@ export const SUPPORTED_LANGUAGES = [
   "Korean",
   "Spanish",
 ];
+

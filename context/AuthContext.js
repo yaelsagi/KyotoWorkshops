@@ -1,3 +1,4 @@
+﻿// Progress: this context is implemented and currently managing shared app state.
 // Authentication context
 // Manages authentication state and provides auth utilities to entire app
 
@@ -53,3 +54,4 @@ export function useAuth() {
   }
   return context;
 }
+

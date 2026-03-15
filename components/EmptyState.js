@@ -1,4 +1,4 @@
-// components/EmptyState.js
+﻿// components/EmptyState.js
 import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { COLORS } from "../styles/colors";
@@ -61,3 +61,4 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
 });
+

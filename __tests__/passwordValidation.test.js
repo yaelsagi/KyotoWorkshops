@@ -1,4 +1,4 @@
-import {
+﻿import {
   PASSWORD_REQUIREMENTS_TEXT,
   getPasswordRuleChecks,
   isPasswordValid,
@@ -6,7 +6,7 @@ import {
 } from '../utils/passwordValidation';
 
 describe('passwordValidation', () => {
-  test('accepts password with 8+ chars letters and numbers', () => {
+  test('accepts password with at least 8 characters including letters and numbers', () => {
     expect(isPasswordValid('abc12345')).toBe(true);
     expect(getPasswordValidationError('abc12345')).toBeNull();
   });
@@ -37,3 +37,4 @@ describe('passwordValidation', () => {
     expect(checks.hasNumber).toBe(true);
   });
 });
+

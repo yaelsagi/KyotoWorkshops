@@ -1,3 +1,4 @@
+﻿// Progress: this component is implemented and currently stable in the app UI flow.
 // Full-screen loading spinner for data-fetching states
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -17,3 +18,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+

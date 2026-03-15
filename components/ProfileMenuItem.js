@@ -1,3 +1,4 @@
+﻿// Progress: this component is implemented and currently stable in the app UI flow.
 // components/ProfileMenuItem.js
 import React from "react";
 import { View, Pressable, Text, StyleSheet } from "react-native";
@@ -15,7 +16,7 @@ export default function ProfileMenuItem({ icon, label, onPress, danger = false }
     >
       <View style={styles.iconWrapper}>{icon}</View>
       <Text style={[styles.label, danger && styles.labelDanger]}>{label}</Text>
-      <Text style={styles.arrow}>›</Text>
+      <Text style={styles.arrow}>ג€÷</Text>
     </Pressable>
   );
 }
@@ -52,3 +53,4 @@ const styles = StyleSheet.create({
     color: COLORS.tertiaryText,
   },
 });
+

@@ -1,92 +1,16 @@
-// Booking service
+﻿// Booking service
 // Handles workshop bookings with validation and status tracking
 
 import { collection, getDocs, addDoc, query, where, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SUPPORTED_LANGUAGES } from '../constants/supportedLanguages';
 import { fetchWorkshopById, fetchWorkshops } from './workshopService';
 import { normalizeWardName } from '../utils/normalizeWardName';
+import { BOOKING_STATUSES, validateBooking } from '../utils/bookingValidation';
+import { getPrimaryWorkshopImage, normalizeBookingForDisplay } from '../utils/bookingNormalizer';
+import { markWorkshopSessionAsBooked } from '../utils/sessionBookingUtils';
 
 const BOOKINGS_KEY = 'kyoto_bookings';
-const BOOKING_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed'];
-const TRANSLATOR_BOOKING_STATUSES = ['none', 'requested', 'assigned', 'completed'];
-
-function getPrimaryWorkshopImage(workshop) {
-  if (!workshop?.images || !Array.isArray(workshop.images) || workshop.images.length === 0) {
-    return null;
-  }
-
-  const firstImage = workshop.images[0];
-  if (typeof firstImage === 'string' && (firstImage.startsWith('http') || firstImage.startsWith('file://'))) {
-    return firstImage;
-  }
-
-  return null;
-}
-
-function normalizeBookingForDisplay(booking, workshopLookup = new Map()) {
-  const workshop = workshopLookup.get(booking.workshopId);
-
-  const priceFromBooking = Number(booking.priceYen);
-  const workshopPrice = Number(workshop?.priceYen);
-
-  return {
-    ...booking,
-    title: booking.title || workshop?.title || 'Workshop',
-    category: booking.category || workshop?.category || 'Workshop',
-    ward: normalizeWardName(booking.ward || workshop?.ward || ''),
-    priceYen: Number.isFinite(priceFromBooking)
-      ? priceFromBooking
-      : (Number.isFinite(workshopPrice) ? workshopPrice : 0),
-    workshopImage: booking.workshopImage || getPrimaryWorkshopImage(workshop),
-    lat: typeof booking.lat === 'number' ? booking.lat : workshop?.lat,
-    lng: typeof booking.lng === 'number' ? booking.lng : workshop?.lng,
-  };
-}
-
-// Check if booking data makes sense before saving
-function validateBooking(booking) {
-  const errors = [];
-  
-  if (!booking.workshopId || typeof booking.workshopId !== 'string') {
-    errors.push('Booking must reference a valid workshop');
-  }
-  
-  if (!booking.userId) {
-    errors.push('User ID is required');
-  }
-  
-  // Status should be one of the defined options
-  if (booking.status && !BOOKING_STATUSES.includes(booking.status)) {
-    errors.push(`Status must be one of: ${BOOKING_STATUSES.join(', ')}`);
-  }
-  
-  // Check translator options if translator was requested
-  if (booking.translatorRequested === true) {
-    if (!booking.requestedLanguage) {
-      errors.push('Language must be specified when requesting translator');
-    }
-    
-    if (!SUPPORTED_LANGUAGES.includes(booking.requestedLanguage)) {
-      errors.push('Invalid translator language');
-    }
-  }
-
-  if (booking.translatorStatus && !TRANSLATOR_BOOKING_STATUSES.includes(booking.translatorStatus)) {
-    errors.push(`Translator status must be one of: ${TRANSLATOR_BOOKING_STATUSES.join(', ')}`);
-  }
-  
-  // Price should be positive if it exists
-  if (booking.priceYen !== undefined && (typeof booking.priceYen !== 'number' || booking.priceYen < 0)) {
-    errors.push('Price must be a valid positive number');
-  }
-  
-  return {
-    valid: errors.length === 0,
-    errors
-  };
-}
 
 // Get all bookings for a specific user
 export async function fetchUserBookings(userId) {
@@ -221,6 +145,24 @@ export async function createBooking(bookingData) {
   
   try {
     const bookingsCollection = collection(db, 'bookings');
+    const hasSessionSelection = Boolean(bookingData?.sessionId);
+
+    // block duplicate active bookings for the same workshop session
+    if (hasSessionSelection) {
+      const existingSessionBookingsQuery = query(
+        bookingsCollection,
+        where('workshopId', '==', completeBookingDraft.workshopId),
+        where('sessionId', '==', bookingData.sessionId)
+      );
+      const existingSessionBookingsSnapshot = await getDocs(existingSessionBookingsQuery);
+      const alreadyBooked = existingSessionBookingsSnapshot.docs
+        .map((document) => document.data())
+        .some((booking) => booking?.status !== 'cancelled');
+
+      if (alreadyBooked) {
+        throw new Error('This session is already booked');
+      }
+    }
     
     // Add creation timestamp and default status
     const completeBooking = {
@@ -235,8 +177,28 @@ export async function createBooking(bookingData) {
       bookedAt: new Date().toISOString(),
     };
     
+    // update workshop session status before saving booking
+    if (hasSessionSelection) {
+      const latestWorkshop = await fetchWorkshopById(completeBookingDraft.workshopId);
+      if (!latestWorkshop) {
+        throw new Error('Workshop not found');
+      }
+
+      const nextSessions = markWorkshopSessionAsBooked(
+        latestWorkshop.sessions,
+        bookingData.sessionId,
+        completeBooking.bookedAt
+      );
+
+      const workshopRef = doc(db, 'workshops', completeBookingDraft.workshopId);
+      await updateDoc(workshopRef, {
+        sessions: nextSessions,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    // save final booking record after session lock
     const documentRef = await addDoc(bookingsCollection, completeBooking);
-    
     const savedBooking = {
       id: documentRef.id,
       ...completeBooking
@@ -257,6 +219,10 @@ export async function createBooking(bookingData) {
     
   } catch (error) {
     console.error('Booking creation failed:', error);
+    // keep specific session-lock errors for clearer UI feedback
+    if (error?.message === 'This session is already booked' || error?.message === 'Selected session is unavailable') {
+      throw error;
+    }
     throw new Error('Could not complete your booking. Please try again.');
   }
 }
@@ -364,4 +330,3 @@ export async function fetchUserBookingForWorkshop(userId, workshopId) {
   }
 }
 
-export { validateBooking, BOOKING_STATUSES, TRANSLATOR_BOOKING_STATUSES };

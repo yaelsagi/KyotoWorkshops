@@ -1,3 +1,4 @@
+﻿// Progress: this component is implemented and currently stable in the app UI flow.
 // Reusable plain text input for auth forms
 import React from 'react';
 import { TextInput, StyleSheet } from 'react-native';
@@ -25,3 +26,4 @@ const styles = StyleSheet.create({
     color: '#2c3e50',
   },
 });
+

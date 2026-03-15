@@ -1,3 +1,4 @@
+﻿// Progress: this service is implemented and currently supports core app logic.
 // User service
 // Handles Firestore user profile operations
 
@@ -78,4 +79,5 @@ export async function updateUserPhotoURL(uid, photoURL) {
     throw new Error('Could not update profile photo');
   }
 }
+
 

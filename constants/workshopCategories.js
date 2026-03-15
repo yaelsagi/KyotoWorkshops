@@ -1,4 +1,5 @@
-// Keep default workshop categories in A→Z order for consistent UI display.
+﻿// Progress: this constants module is prepared and actively used across the app.
+// Keep default workshop categories in Aג†’Z order for consistent UI display.
 export const WORKSHOP_CATEGORIES = [
   "Bamboo Craft",
   "Calligraphy",
@@ -21,3 +22,4 @@ export const WORKSHOP_CATEGORIES = [
   "Woodblock Printing",
   "Yuzen",
 ];
+

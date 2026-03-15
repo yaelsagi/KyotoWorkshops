@@ -1,3 +1,4 @@
+﻿// Progress: this navigation module is implemented and active in the app route flow.
 // navigation/TabsNavigator.js
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";

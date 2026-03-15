@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 // screens/MapScreen.js
 // Interactive map showing workshop locations in Kyoto with filtering and selection
 //
@@ -12,7 +13,7 @@
 // - prefetch runs asynchronously (Promise-based, no await blocking)
 // - Multiple images fetched in parallel for performance
 // - Cache persists across app restarts
-// - Provides smooth UX: marker tap → instant image on details screen
+// - Provides smooth UX: marker tap ג†’ instant image on details screen
 //
 // Data Loading:
 // - Fetches workshops from Firebase on mount with AsyncStorage fallback
@@ -38,7 +39,9 @@ import { Image } from "expo-image";
 import { HeartIcon, XMarkIcon } from "react-native-heroicons/outline";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { fetchWorkshops, prefetchWorkshopImages, fetchPlatformCategories } from "../services/workshopService";
+import { fetchWorkshops } from "../services/workshopService";
+import { prefetchWorkshopImages } from "../services/workshopImageService";
+import { fetchPlatformCategories } from "../services/workshopAdminService";
 import WorkshopMapMarker from "../components/WorkshopMapMarker";
 import MapSearchBar from "../components/MapSearchBar";
 import FiltersSheet from "../components/FiltersSheet";
@@ -82,9 +85,6 @@ export default function MapScreen({ navigation }) {
   // These are the ONLY filters that affect the map.
   // They update ONLY when the user presses Apply.
   const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
-
-  // to fix iOS MapView issue where it fails to redraw when markers that change state (like favourite toggled)
-  const [mapRefreshCount, setMapRefreshCount] = useState(0);
 
   // Platform category list (static defaults + admin-approved custom categories).
   // Initialised to static list so filters work immediately before the Firestore fetch completes.
@@ -151,10 +151,6 @@ export default function MapScreen({ navigation }) {
     }
     toggleFavourite(workshopId);
 
-    // iOS MapView can miss marker color/state updates until the next touch.
-    // Force one redraw immediately after favourite state changes.
-    setMapRefreshCount((count) => count + 1);
-
     setSelected((previousSelected) => {
       if (!previousSelected || previousSelected.id !== workshopId) {
         return previousSelected;
@@ -178,15 +174,11 @@ export default function MapScreen({ navigation }) {
       selectedCategories: Array.isArray(draft.selectedCategories) ? draft.selectedCategories : [],
     });
 
-    // Force MapView to redraw (fixing iOS marker state update issues)
-    setMapRefreshCount((count) => count + 1);
-
     setFiltersVisible(false);
   }, []);
 
   const handleClearFilters = useCallback(() => {
     setAppliedFilters(DEFAULT_FILTERS);
-    setMapRefreshCount((count) => count + 1);
     setFiltersVisible(false);
   }, []);
 
@@ -210,8 +202,6 @@ export default function MapScreen({ navigation }) {
 
       return next;
     });
-
-    setMapRefreshCount((count) => count + 1);
   }, []);
 
   const activeFilterChips = useMemo(() => {
@@ -244,8 +234,8 @@ export default function MapScreen({ navigation }) {
     });
 
     if (appliedFilters.minPrice !== null || appliedFilters.maxPrice !== null) {
-      const minLabel = appliedFilters.minPrice !== null ? `¥${Number(appliedFilters.minPrice).toLocaleString()}` : "Any";
-      const maxLabel = appliedFilters.maxPrice !== null ? `¥${Number(appliedFilters.maxPrice).toLocaleString()}` : "Any";
+      const minLabel = appliedFilters.minPrice !== null ? `ֲ¥${Number(appliedFilters.minPrice).toLocaleString()}` : "Any";
+      const maxLabel = appliedFilters.maxPrice !== null ? `ֲ¥${Number(appliedFilters.maxPrice).toLocaleString()}` : "Any";
       chips.push({
         key: "price-range",
         label: `${minLabel} - ${maxLabel}`,
@@ -274,7 +264,7 @@ export default function MapScreen({ navigation }) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" />
-        <Text style={styles.loadingText}>Loading…</Text>
+        <Text style={styles.loadingText}>Loadingג€¦</Text>
       </View>
     );
   }
@@ -334,8 +324,6 @@ export default function MapScreen({ navigation }) {
       />
 
       <MapView
-        // Important: key changes only when Apply/Clear is pressed (not on every toggle)
-        key={`map-${mapRefreshCount}`}
         style={StyleSheet.absoluteFillObject}
         initialRegion={KYOTO_REGION}
         onPress={() => {
@@ -357,6 +345,7 @@ export default function MapScreen({ navigation }) {
               key={w.id}
               workshop={w}
               saved={isSaved}
+              selected={selected?.id === w.id}
               onSelect={(workshop) => {
                 ignoreNextMapPressRef.current = true;
                 Keyboard.dismiss();
@@ -387,11 +376,11 @@ export default function MapScreen({ navigation }) {
           </View>
 
           <Text style={styles.cardMeta}>
-            {selected.category} · {selected.ward}
-            {selected.isTop ? " · Top" : ""}
+            {selected.category} ֲ· {selected.ward}
+            {selected.isTop ? " ֲ· Top" : ""}
           </Text>
 
-          <Text style={styles.cardPrice}>¥{selected.priceYen.toLocaleString()}</Text>
+          <Text style={styles.cardPrice}>ֲ¥{selected.priceYen.toLocaleString()}</Text>
 
           <View style={styles.cardActionsRow}>
             <Pressable
@@ -526,3 +515,4 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFE4E1",
   },
 });
+

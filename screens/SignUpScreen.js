@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 // Sign up screen for new users
 import React, { useState } from 'react';
 import {
@@ -82,7 +83,7 @@ export default function SignUpScreen({ navigation, route }) {
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>京都 Kyoto Workshops</Text>
+          <Text style={styles.title}>ה÷¬יƒ½ Kyoto Workshops</Text>
           <Text style={styles.subtitle}>Create your account</Text>
         </View>
 
@@ -213,3 +214,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

@@ -1,6 +1,4 @@
-// Tests for review service
-// Tests data validation, async operations, error handling
-
+﻿// tests for review service
 import {
   validateReview,
   fetchReviewsForWorkshop,
@@ -13,9 +11,8 @@ jest.mock('firebase/firestore');
 jest.mock('../firebase/firebase', () => ({ db: {} }));
 
 describe('Review Validation', () => {
-  
-  // Valid review should pass all checks
-  test('accepts valid review', () => {
+
+  test('accepts a valid review', () => {
     const validReview = {
       workshopId: 'workshop_test',
       userId: 'user_123',
@@ -30,8 +27,7 @@ describe('Review Validation', () => {
     expect(result.errors).toHaveLength(0);
   });
   
-  // Rating must be between 1 and 5
-  test('rejects invalid rating values', () => {
+  test('rejects ratings outside the allowed range', () => {
     const reviews = [
       { workshopId: 'w1', name: 'Test', rating: 0, text: 'Too low rating' },
       { workshopId: 'w1', name: 'Test', rating: 6, text: 'Too high rating' },
@@ -45,13 +41,12 @@ describe('Review Validation', () => {
     });
   });
   
-  // Review text has minimum and maximum length
   test('rejects review text that is too short', () => {
     const review = {
       workshopId: 'w1',
       name: 'Test User',
       rating: 4,
-      text: 'Too short'  // Only 9 characters
+      text: 'Too short'
     };
     
     const result = validateReview(review);
@@ -65,7 +60,7 @@ describe('Review Validation', () => {
       workshopId: 'w1',
       name: 'Test User',
       rating: 4,
-      text: 'A'.repeat(1001)  // More than 1000 characters
+      text: 'A'.repeat(1001)
     };
     
     const result = validateReview(review);
@@ -74,8 +69,7 @@ describe('Review Validation', () => {
     expect(result.errors).toContain('Review text is too long (maximum 1000 characters)');
   });
   
-  // Name is required
-  test('rejects review without name', () => {
+  test('requires reviewer name', () => {
     const review = {
       workshopId: 'w1',
       name: '',
@@ -91,9 +85,8 @@ describe('Review Validation', () => {
 });
 
 describe('Fetching Reviews - Async Operations', () => {
-  
-  // Should handle multiple reviews for one workshop
-  test('fetches reviews for workshop successfully', async () => {
+
+  test('fetches reviews for a workshop', async () => {
     getDocs.mockResolvedValue({
       empty: false,
       docs: [
@@ -126,8 +119,7 @@ describe('Fetching Reviews - Async Operations', () => {
     expect(reviews[0].name).toBe('Sarah M.');
   });
   
-  // Empty result when workshop has no reviews yet
-  test('returns empty array when no reviews exist', async () => {
+  test('returns an empty array when no reviews exist', async () => {
     getDocs.mockResolvedValue({
       empty: true,
       docs: []
@@ -138,18 +130,15 @@ describe('Fetching Reviews - Async Operations', () => {
     expect(reviews).toEqual([]);
   });
   
-  // Network errors shouldn't crash app
   test('handles fetch errors gracefully', async () => {
     getDocs.mockRejectedValue(new Error('Connection timeout'));
     
     const reviews = await fetchReviewsForWorkshop('workshop_test');
     
-    // Should return empty array, not throw error
     expect(reviews).toEqual([]);
   });
-  
-  // Filters out reviews with corrupt data
-  test('filters invalid reviews from results', async () => {
+
+  test('filters invalid reviews from fetched results', async () => {
     getDocs.mockResolvedValue({
       empty: false,
       docs: [
@@ -167,8 +156,8 @@ describe('Fetching Reviews - Async Operations', () => {
           data: () => ({
             workshopId: 'w1',
             name: '',
-            rating: 10,  // Invalid rating
-            text: 'Bad'  // Too short
+            rating: 10,
+            text: 'Bad'
           })
         }
       ]
@@ -176,16 +165,14 @@ describe('Fetching Reviews - Async Operations', () => {
     
     const reviews = await fetchReviewsForWorkshop('w1');
     
-    // Should only return the valid review
     expect(reviews).toHaveLength(1);
     expect(reviews[0].id).toBe('good_review');
   });
 });
 
 describe('Submitting Reviews', () => {
-  
-  // Should successfully save valid review
-  test('submits valid review to database', async () => {
+
+  test('submits a valid review to the database', async () => {
     addDoc.mockResolvedValue({ id: 'new_review_id' });
     
     const reviewData = {
@@ -202,8 +189,7 @@ describe('Submitting Reviews', () => {
     expect(addDoc).toHaveBeenCalled();
   });
   
-  // Should reject invalid review before sending to database
-  test('throws error for invalid review data', async () => {
+  test('throws for invalid review data', async () => {
     const badReview = {
       workshopId: 'w1',
       name: '',
@@ -214,8 +200,7 @@ describe('Submitting Reviews', () => {
     await expect(submitReview(badReview)).rejects.toThrow('Cannot submit review');
   });
   
-  // Should handle database errors
-  test('throws error when database write fails', async () => {
+  test('throws when database write fails', async () => {
     addDoc.mockRejectedValue(new Error('Write failed'));
     
     const review = {
@@ -230,9 +215,8 @@ describe('Submitting Reviews', () => {
 });
 
 describe('Average Rating Calculation', () => {
-  
-  // Calculate average from multiple ratings
-  test('calculates correct average rating', () => {
+
+  test('calculates the correct average rating', () => {
     const reviews = [
       { rating: 5 },
       { rating: 4 },
@@ -245,16 +229,15 @@ describe('Average Rating Calculation', () => {
     expect(average).toBe('4.3');
   });
   
-  // Returns 0 for workshops with no reviews
-  test('returns 0 for empty review array', () => {
+  test('returns 0 for an empty review array', () => {
     const average = calculateAverageRating([]);
     
     expect(average).toBe(0);
   });
   
-  // Handles null or undefined input
-  test('handles null reviews gracefully', () => {
+  test('handles null or undefined input', () => {
     expect(calculateAverageRating(null)).toBe(0);
     expect(calculateAverageRating(undefined)).toBe(0);
   });
 });
+

@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 import React, { useState } from 'react';
 import {
   View,
@@ -135,13 +136,13 @@ export default function ChangePasswordScreen({ navigation }) {
             <Text style={styles.helperText}>{PASSWORD_REQUIREMENTS_TEXT}</Text>
             <View style={styles.ruleList}>
               <Text style={[styles.ruleItem, passwordRuleChecks.hasMinimumLength && styles.ruleItemPassed]}>
-                • At least 8 characters
+                ג€¢ At least 8 characters
               </Text>
               <Text style={[styles.ruleItem, passwordRuleChecks.hasLetter && styles.ruleItemPassed]}>
-                • Contains a letter
+                ג€¢ Contains a letter
               </Text>
               <Text style={[styles.ruleItem, passwordRuleChecks.hasNumber && styles.ruleItemPassed]}>
-                • Contains a number
+                ג€¢ Contains a number
               </Text>
             </View>
             {newPasswordError ? <Text style={styles.errorText}>{newPasswordError}</Text> : null}

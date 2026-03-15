@@ -1,3 +1,4 @@
+﻿// Progress: this context is implemented and currently managing shared app state.
 // context/FavouritesContext.js
 // Shared favourites state management across the app
 // Provides single source of truth for workshop favourites
@@ -131,3 +132,4 @@ export function useFavourites() {
   }
   return context;
 }
+

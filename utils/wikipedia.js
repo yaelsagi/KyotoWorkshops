@@ -1,3 +1,4 @@
+﻿// Progress: this utility module is implemented and currently used by app features.
 // utils/wikipedia.js
 export async function fetchWikipediaContent(keyword) {
   try {
@@ -23,3 +24,4 @@ export async function fetchWikipediaContent(keyword) {
     return null;
   }
 }
+

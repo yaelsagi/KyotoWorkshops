@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -27,10 +28,10 @@ import { useUser } from "../context/UserContext";
 import { WORKSHOP_CATEGORIES } from "../constants/workshopCategories";
 import { KYOTO_WARDS } from "../constants/kyotoWards";
 import {
-  fetchPlatformCategories,
   createWorkshop,
   updateWorkshop,
 } from "../services/workshopService";
+import { fetchPlatformCategories } from "../services/workshopAdminService";
 import KeyboardDoneBar from "../components/KeyboardDoneBar";
 
 // workshop duration options
@@ -1197,3 +1198,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+

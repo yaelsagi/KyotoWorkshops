@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 import React, { useMemo, useState } from "react";
 import {
   View,
@@ -702,3 +703,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
+

@@ -1,3 +1,5 @@
+﻿// Tests for translator service
+
 import { matchTranslatorsForSession } from '../services/translatorService';
 
 describe('Translator session matching', () => {
@@ -121,3 +123,4 @@ describe('Translator session matching', () => {
     expect(result[0].id).toBe('translator_high_level');
   });
 });
+

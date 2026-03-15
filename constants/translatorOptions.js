@@ -1,3 +1,4 @@
+﻿// Progress: this constants module is prepared and actively used across the app.
 export const TRANSLATOR_APPLICATION_STATUSES = [
   "none",
   "pending",
@@ -68,3 +69,4 @@ export const DEFAULT_TRANSLATOR_PROFILE = {
   ratingCount: 0,
   completedJobs: 0,
 };
+

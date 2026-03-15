@@ -1,3 +1,4 @@
+﻿// Progress: this context is implemented and currently managing shared app state.
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { getUserProfile } from "../services/userService";
@@ -113,3 +114,4 @@ export const useUser = () => {
   }
   return context;
 };
+

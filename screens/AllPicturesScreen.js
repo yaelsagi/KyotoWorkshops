@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 // screens/AllPicturesScreen.js
 // Full-screen gallery view for displaying all workshop images
 //
@@ -122,3 +123,4 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 });
+

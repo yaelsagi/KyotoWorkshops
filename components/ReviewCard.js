@@ -1,3 +1,4 @@
+﻿// Progress: this component is implemented and currently stable in the app UI flow.
 // components/ReviewCard.js
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
@@ -58,3 +59,4 @@ const styles = StyleSheet.create({
     color: COLORS.secondaryText,
   },
 });
+

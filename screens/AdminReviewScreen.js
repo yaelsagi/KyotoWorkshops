@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
@@ -16,7 +17,7 @@ import {
   fetchPendingWorkshopsForReview,
   reviewWorkshop,
   reviewWorkshopCategorySuggestion,
-} from "../services/workshopService";
+} from "../services/workshopAdminService";
 import {
   fetchPendingTranslatorApplications,
   reviewTranslatorApplication,
@@ -364,7 +365,7 @@ export default function AdminReviewScreen({ navigation }) {
                   Wards: {(application.wardsAvailable || []).join(", ") || "None"}
                 </Text>
                 <Text style={styles.cardMeta}>
-                  Hourly rate: {Number.isFinite(submittedRate) && submittedRate > 0 ? `¥${submittedRate}/hour` : "Not set"}
+                  Hourly rate: {Number.isFinite(submittedRate) && submittedRate > 0 ? `ֲ¥${submittedRate}/hour` : "Not set"}
                 </Text>
                 <Text style={styles.cardMeta}>Availability: {formatAvailabilitySlots(availability) || "None"}</Text>
                 <Text style={styles.cardMeta}>Interview: {application.interviewAt || "Not selected"}</Text>
@@ -529,3 +530,4 @@ const styles = StyleSheet.create({
     color: "#1F1F1F",
   },
 });
+

@@ -1,3 +1,4 @@
+﻿// Progress: this service is implemented and currently supports core app logic.
 // Authentication service
 // Handles user sign up, sign in, and sign out with Firebase Auth
 
@@ -274,7 +275,7 @@ export async function deleteUserAccount(userId) {
     const userDoc = doc(db, 'users', userId);
     await deleteDoc(userDoc);
 
-    // Must be last — deleteUser signs the user out immediately
+    // Must be last ג€” deleteUser signs the user out immediately
     await deleteUser(currentUser);
 
     return true;
@@ -288,3 +289,4 @@ export async function deleteUserAccount(userId) {
     throw new Error(`Could not delete account: ${error.message}`);
   }
 }
+

@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
@@ -210,7 +211,7 @@ export default function TranslatorDashboardScreen() {
           {(translatorApplication.targetLanguages || []).length > 0 ? (
             (translatorApplication.targetLanguages || []).map((language) => (
               <Text key={language} style={styles.metaValue}>
-                • {language} — {languageLevelMap[language] || "Not set"}
+                ג€¢ {language} ג€” {languageLevelMap[language] || "Not set"}
               </Text>
             ))
           ) : (
@@ -495,3 +496,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
+

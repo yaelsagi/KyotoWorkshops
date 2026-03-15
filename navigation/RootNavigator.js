@@ -1,3 +1,4 @@
+﻿// Progress: this navigation module is implemented and active in the app route flow.
 // navigation/RootNavigator.js
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";

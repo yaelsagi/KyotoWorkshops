@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 import React, { useState, useEffect } from "react";
 import { 
   View, 

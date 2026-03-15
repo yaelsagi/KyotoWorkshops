@@ -1,3 +1,4 @@
+﻿// Progress: the main app entry is implemented and currently stable for core flows.
 // App.js
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
@@ -44,3 +45,4 @@ export default function App() {
 //     </NavigationContainer>
 //   );
 // }
+

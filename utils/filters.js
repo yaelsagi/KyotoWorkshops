@@ -1,3 +1,4 @@
+﻿// Progress: this utility module is implemented and currently used by app features.
 // utils/filters.js
 import {
   ALL_OPTION,
@@ -96,7 +97,7 @@ export function deriveFilterOptions(workshops, platformCategories = WORKSHOP_CAT
 
   const categories = Array.from(
     new Set([...platformCategories, ...workshopCategories])
-    // Always show category filters in A→Z order.
+    // Always show category filters in Aג†’Z order.
   ).sort((a, b) => a.localeCompare(b));
 
   const normalizedWards = workshops

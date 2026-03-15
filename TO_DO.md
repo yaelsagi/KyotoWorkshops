@@ -5,6 +5,7 @@
 - add heptics (added already to create workshop screen) and fallback
 - go over all scripts to check for magic numbers
 - audit extra auth guards before protected screens
+- review and update data/workshops.json so the demo/offline dataset matches current app fields and structure
 - 1️⃣ Software Architecture Diagram
   User
    ↓

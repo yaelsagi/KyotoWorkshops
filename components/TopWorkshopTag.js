@@ -1,3 +1,4 @@
+﻿// Progress: this component is implemented and currently stable in the app UI flow.
 import React from "react";
 import { View, Text, StyleSheet, Platform } from "react-native";
 import { COLORS } from "../styles/colors";
@@ -38,3 +39,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 });
+

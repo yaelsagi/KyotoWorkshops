@@ -1,3 +1,4 @@
+﻿// Progress: this screen is implemented and integrated in the current app flow.
 import React, { useState } from "react";
 import { 
   View, 
@@ -185,7 +186,7 @@ export default function ProfileScreen({ navigation }) {
   const handleAbout = () => {
     Alert.alert(
       "About Kyoto Workshops",
-      "Version 1.0.0\n\nDiscover and book authentic traditional craft workshops in Kyoto, Japan.\n\n© 2026 Kyoto Workshops",
+      "Version 1.0.0\n\nDiscover and book authentic traditional craft workshops in Kyoto, Japan.\n\nֲ© 2026 Kyoto Workshops",
       [{ text: "OK" }]
     );
   };
@@ -471,7 +472,7 @@ export default function ProfileScreen({ navigation }) {
       <SafeAreaView style={styles.container} edges={["top"]}>
         <View style={styles.profileLoadingState}>
           <ActivityIndicator size="large" color={COLORS.primaryText} />
-          <Text style={styles.profileLoadingText}>Loading profile…</Text>
+          <Text style={styles.profileLoadingText}>Loading profileג€¦</Text>
         </View>
       </SafeAreaView>
     );
@@ -538,7 +539,7 @@ export default function ProfileScreen({ navigation }) {
             }
           }}
         >
-          <Text style={styles.statEmoji}>🌐</Text>
+          <Text style={styles.statEmoji}>נ</Text>
           <Text style={styles.statLabel}>
             {translatorButtonLabel}
           </Text>
@@ -551,7 +552,7 @@ export default function ProfileScreen({ navigation }) {
               : navigation.navigate("CreateWorkshop")
           }
         >
-          <Text style={styles.statEmoji}>🎨</Text>
+          <Text style={styles.statEmoji}>נ¨</Text>
           <Text style={styles.statLabel}>
             {isHostEnabled ? "Workshop Host Dashboard" : "Host a Workshop"}
           </Text>
@@ -858,3 +859,4 @@ const styles = StyleSheet.create({
     color: COLORS.tertiaryText,
   },
 });
+

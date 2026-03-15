@@ -1,3 +1,4 @@
+﻿// Progress: this component is implemented and currently stable in the app UI flow.
 // components/PictureCard.js
 // Image card component for displaying workshop images in carousel
 //
@@ -70,3 +71,4 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 });
+

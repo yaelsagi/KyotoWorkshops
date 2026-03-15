@@ -1,3 +1,4 @@
+﻿// Progress: this Firebase module is configured and currently used by app services.
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -38,3 +39,4 @@ export const auth = (() => {
 export const database = db;
 
 export default app;
+

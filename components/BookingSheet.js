@@ -1,23 +1,9 @@
+﻿// Progress: this component is implemented and currently stable in the app UI flow.
 // components/BookingSheet.js
-// Multi-step bottom sheet for booking a workshop.
-//
-// Step 0 — Translator preference
-//   • Do you need a translator? Yes / No
-//   • If Yes: language selector (all supported languages except Japanese)
-//   • "Next" button enabled once a choice is made
-//
-// Step 1 — Session, participants, cost, and confirmation
-//   • Session picker: tappable session cards (date + time)
-//   • Participant counter with [-] [count] [+] (1 → workshop.maxParticipants)
-//   • Live cost breakdown: per-person + optional translator fee + total
-//   • "Confirm Booking" button (green) — disabled until session is selected
-//
-// After successful booking:
-//   • Saves to bookings collection via createBooking
-//   • Triggers Haptics.NotificationFeedbackType.Success
-//   • Calls onBooked(savedBooking) then closes the sheet
+// Session-first booking sheet:
+// 1) session, 2) participants, 3) translator options, 4) confirm booking.
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -30,74 +16,164 @@ import {
   Alert,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import { XMarkIcon, ChevronRightIcon, ChevronLeftIcon } from "react-native-heroicons/outline";
+import { XMarkIcon } from "react-native-heroicons/outline";
 
 import { COLORS } from "../styles/colors";
 import { SUPPORTED_LANGUAGES } from "../constants/supportedLanguages";
 import { createBooking } from "../services/bookingService";
-import { fetchApprovedTranslators, matchTranslatorsForSession } from "../services/translatorService";
+import { fetchApprovedTranslators, getMatchingTranslators } from "../services/translatorService";
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ג”€ג”€ג”€ Helpers ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 
 function formatSessionDate(dateStr) {
   if (!dateStr) return "";
   try {
     const d = new Date(dateStr);
     return d.toLocaleDateString("en-GB", {
-      weekday: "short",
+      weekday: "long",
       day: "numeric",
       month: "short",
-      year: "numeric",
     });
   } catch {
     return dateStr;
   }
 }
 
-// ─── Component ──────────────────────────────────────────────────────────────
+function formatSessionRowLabel(session) {
+  if (!session) {
+    return "";
+  }
+  const dateLabel = formatSessionDate(session.date);
+  return `${dateLabel} ג€” ${session.time || ""}`;
+}
+
+function formatLanguageCountMessage(count, language, stageLabel) {
+  if (!language) {
+    return `${count} translators available ${stageLabel}`;
+  }
+
+  if (count <= 0) {
+    return `No ${language}-speaking translators available ${stageLabel}`;
+  }
+
+  return `${count} ${language}-speaking translators available ${stageLabel}`;
+}
+
+function toMinutes(timeStr) {
+  if (!timeStr || typeof timeStr !== "string") {
+    return -1;
+  }
+
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return -1;
+  }
+
+  return hours * 60 + minutes;
+}
+
+function sessionMatchesAvailability(session, availability = []) {
+  if (!session?.date || !session?.time || !Array.isArray(availability) || availability.length === 0) {
+    return false;
+  }
+
+  const weekday = new Date(session.date).toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+  const sessionMinutes = toMinutes(session.time);
+  if (sessionMinutes < 0) {
+    return false;
+  }
+
+  return availability.some((slot) => {
+    const slotDay = String(slot?.day || "").trim().toLowerCase();
+    if (slotDay !== weekday) {
+      return false;
+    }
+
+    const fromMinutes = toMinutes(slot?.from);
+    const toMinutesValue = toMinutes(slot?.to);
+    if (fromMinutes < 0 || toMinutesValue < 0 || toMinutesValue <= fromMinutes) {
+      return false;
+    }
+
+    return sessionMinutes >= fromMinutes && sessionMinutes <= toMinutesValue;
+  });
+}
+
+// detect session states that must be locked in the UI
+function isSessionUnavailable(session) {
+  if (!session || typeof session !== "object") {
+    return false;
+  }
+
+  if (session.isBooked === true || session.unavailable === true || session.isUnavailable === true) {
+    return true;
+  }
+
+  const status = String(session.status || session.availabilityStatus || "").trim().toLowerCase();
+  return status === "booked" || status === "unavailable";
+}
+
+// detect sessions explicitly marked as booked
+function isSessionBooked(session) {
+  if (!session || typeof session !== "object") {
+    return false;
+  }
+
+  if (session.isBooked === true) {
+    return true;
+  }
+
+  const status = String(session.status || session.availabilityStatus || "").trim().toLowerCase();
+  return status === "booked";
+}
+
+// ג”€ג”€ג”€ Component ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 
 export default function BookingSheet({ visible, onClose, onBooked, workshop, currentUser }) {
-  // ── Wizard step (0 = translator, 1 = session + cost + confirm) ──────────
-  const [step, setStep] = useState(0);
-
-  // ── Step 0 state ────────────────────────────────────────────────────────
-  const [needsTranslator, setNeedsTranslator] = useState(null); // null | true | false
-  const [selectedLanguage, setSelectedLanguage] = useState(null);
-
-  // ── Step 1 state ────────────────────────────────────────────────────────
+  // Session and participant selections come first in this flow.
   const [selectedSession, setSelectedSession] = useState(null);
   const [participants, setParticipants] = useState(1);
 
-  // ── Translator matching state ────────────────────────────────────────────
+  // Translator choices are made after session and participants.
+  const [needsTranslator, setNeedsTranslator] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState(null);
+  const [selectedTranslator, setSelectedTranslator] = useState(null);
+
+  // ג”€ג”€ Translator matching state ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   const [translators, setTranslators] = useState([]);
   const [loadingTranslators, setLoadingTranslators] = useState(false);
-  const [matchedTranslator, setMatchedTranslator] = useState(null);
 
-  // ── Submission state ─────────────────────────────────────────────────────
+  // ג”€ג”€ Submission state ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   const [submitting, setSubmitting] = useState(false);
 
-  // ── Derived workshop values with safe fallbacks ──────────────────────────
+  // ג”€ג”€ Derived workshop values with safe fallbacks ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   const sessions = workshop?.sessions || [];
   const maxParticipants = workshop?.maxParticipants || 8;
-  const pricePerPerson = typeof workshop?.priceYen === "number" ? workshop.priceYen : 0;
+  const pricePerPerson =
+    typeof workshop?.priceYen === "number"
+      ? workshop.priceYen
+      : (typeof workshop?.price === "number" ? workshop.price : 0);
   const durationHours = typeof workshop?.durationHours === "number" ? workshop.durationHours : 2;
+  // show booked label only to host and admin roles
+  const canSeeBookedBadge = Boolean(currentUser?.roles?.admin || currentUser?.roles?.host);
 
-  // ── Reset all state whenever the sheet opens ─────────────────────────────
+  // ג”€ג”€ Reset all state whenever the sheet opens ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   useEffect(() => {
     if (visible) {
-      setStep(0);
-      setNeedsTranslator(null);
-      setSelectedLanguage(null);
       setSelectedSession(null);
       setParticipants(1);
+      setNeedsTranslator(false);
+      setSelectedLanguage(null);
+      setSelectedTranslator(null);
       setTranslators([]);
-      setMatchedTranslator(null);
     }
   }, [visible]);
 
-  // ── Load approved translators once the user confirms they need one ───────
+  // Load translator pool once the sheet opens so stats can be shown early.
   useEffect(() => {
-    if (!needsTranslator || !selectedLanguage) return;
+    if (!visible) {
+      return;
+    }
 
     let cancelled = false;
     const load = async () => {
@@ -114,45 +190,128 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
 
     load();
     return () => { cancelled = true; };
-  }, [needsTranslator, selectedLanguage]);
+  }, [visible]);
 
-  // ── Re-match best translator whenever session or translator list changes ─
+  // Clear language-dependent selection when user changes translator requirement.
   useEffect(() => {
-    if (!needsTranslator || !selectedLanguage || !selectedSession || translators.length === 0) {
-      setMatchedTranslator(null);
-      return;
+    if (!needsTranslator) {
+      setSelectedLanguage(null);
+      setSelectedTranslator(null);
+    }
+  }, [needsTranslator]);
+
+  // If language or session changes, previously selected translator may no longer match.
+  useEffect(() => {
+    setSelectedTranslator(null);
+  }, [selectedLanguage, selectedSession]);
+
+  const areaTranslators = useMemo(() => {
+    if (!selectedLanguage) {
+      return [];
+    }
+    return getMatchingTranslators(translators, selectedLanguage, workshop?.ward, null, 3);
+  }, [translators, selectedLanguage, workshop?.ward]);
+
+  const sessionTranslators = useMemo(() => {
+    if (!selectedLanguage || !selectedSession) {
+      return [];
+    }
+    return getMatchingTranslators(
+      translators,
+      selectedLanguage,
+      workshop?.ward,
+      selectedSession,
+      3,
+    );
+  }, [translators, selectedLanguage, selectedSession, workshop?.ward]);
+
+  const sessionTranslatorCountMap = useMemo(() => {
+    const counts = new Map();
+    if (!selectedLanguage || !Array.isArray(sessions) || sessions.length === 0) {
+      return counts;
     }
 
-    const matches = matchTranslatorsForSession({
-      translators,
-      requestedLanguage: selectedLanguage,
-      ward: workshop?.ward,
-      sessionDate: selectedSession?.date,
-      sessionTime: selectedSession?.time,
+    sessions.forEach((session) => {
+      const matches = getMatchingTranslators(
+        translators,
+        selectedLanguage,
+        workshop?.ward,
+        session,
+        3,
+      );
+      counts.set(session.id, matches.length);
     });
 
-    setMatchedTranslator(matches[0] || null);
-  }, [translators, selectedLanguage, selectedSession, needsTranslator, workshop?.ward]);
+    return counts;
+  }, [sessions, translators, selectedLanguage, workshop?.ward]);
 
-  // ── Cost calculation ─────────────────────────────────────────────────────
-  const workshopCost = pricePerPerson * participants;
+  const translatorsInAreaCount = useMemo(() => {
+    const normalizedWard = String(workshop?.ward || "").trim().toLowerCase();
+    if (!normalizedWard) {
+      return 0;
+    }
+
+    return translators.filter((translator) => {
+      const wards = (translator?.translatorProfile?.wardsAvailable || []).map((entry) =>
+        String(entry).trim().toLowerCase()
+      );
+      return wards.includes(normalizedWard);
+    }).length;
+  }, [translators, workshop?.ward]);
+
+  const translatorsForSelectedSessionCount = useMemo(() => {
+    if (!selectedSession) {
+      return 0;
+    }
+
+    const normalizedWard = String(workshop?.ward || "").trim().toLowerCase();
+    if (!normalizedWard) {
+      return 0;
+    }
+
+    return translators.filter((translator) => {
+      const wards = (translator?.translatorProfile?.wardsAvailable || []).map((entry) =>
+        String(entry).trim().toLowerCase()
+      );
+
+      if (!wards.includes(normalizedWard)) {
+        return false;
+      }
+
+      const availability = translator?.translatorProfile?.availability || [];
+      return sessionMatchesAvailability(selectedSession, availability);
+    }).length;
+  }, [selectedSession, translators, workshop?.ward]);
+
+  // ג”€ג”€ Cost calculation ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  const totalWorkshopCost = pricePerPerson * participants;
   const translatorHourlyRate =
-    needsTranslator && matchedTranslator
-      ? Number(matchedTranslator.translatorProfile?.hourlyRateYen || 0)
+    needsTranslator && selectedTranslator
+      ? Number(selectedTranslator.translatorProfile?.hourlyRateYen || selectedTranslator.translatorProfile?.hourlyRate || 0)
       : 0;
   const translatorCost = translatorHourlyRate * durationHours;
-  const totalCost = workshopCost + translatorCost;
+  const totalCost = totalWorkshopCost + translatorCost;
 
-  // ── Guard conditions ─────────────────────────────────────────────────────
-  // Step 0 → Next is enabled once the user has selected Yes or No
-  // (and chosen a language when Yes is selected)
-  const canProceedStep0 =
-    needsTranslator === false || (needsTranslator === true && selectedLanguage !== null);
+  const selectedSessionIsUnavailable = useMemo(() => {
+    if (!selectedSession?.id) {
+      return false;
+    }
 
-  // Confirm is enabled once a session is chosen and participants is valid
-  const canConfirm = selectedSession !== null && participants >= 1 && !submitting;
+    const latestSession = sessions.find((session) => session?.id === selectedSession.id);
+    return isSessionUnavailable(latestSession || selectedSession);
+  }, [sessions, selectedSession]);
 
-  // ── Booking submission ───────────────────────────────────────────────────
+  const participantsValid = participants >= 1 && participants <= maxParticipants;
+  const translatorSelectionValid =
+    !needsTranslator || (selectedLanguage && selectedTranslator);
+  const canConfirm =
+    selectedSession &&
+    !selectedSessionIsUnavailable &&
+    participantsValid &&
+    translatorSelectionValid &&
+    !submitting;
+
+  // ג”€ג”€ Booking submission ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   const handleConfirm = async () => {
     if (!canConfirm) return;
 
@@ -170,9 +329,9 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
         status: "confirmed",
         translatorRequested: needsTranslator === true,
         requestedLanguage: needsTranslator ? selectedLanguage : null,
-        translatorId: matchedTranslator?.id || null,
+        translatorId: selectedTranslator?.id || null,
         // Cost breakdown
-        priceYen: workshopCost,
+        priceYen: totalWorkshopCost,
         translatorCost: needsTranslator ? translatorCost : 0,
         totalCost,
         // Workshop snapshot fields (denormalised for BookingsScreen display)
@@ -196,6 +355,10 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
 
       onBooked?.(saved);
       onClose();
+      Alert.alert(
+        "Booking confirmed",
+        `Thank you for booking ${workshop.title}!\n${workshop.hostName || "Your host"} is looking forward to seeing you!`
+      );
     } catch (err) {
       Alert.alert("Booking failed", err.message || "Could not complete your booking. Please try again.");
     } finally {
@@ -203,7 +366,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
     }
   };
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 
   return (
     <Modal
@@ -212,7 +375,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
       animationType="slide"
       onRequestClose={onClose}
     >
-      {/* Dark overlay — tapping closes the sheet */}
+      {/* Dark overlay ג€” tapping closes the sheet */}
       <Pressable style={styles.overlay} onPress={onClose} />
 
       {/* Bottom sheet */}
@@ -222,19 +385,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
 
         {/* Header row */}
         <View style={styles.sheetHeader}>
-          <View style={styles.headerSide}>
-            {step === 1 ? (
-              <Pressable
-                onPress={() => setStep(0)}
-                style={styles.backBtn}
-                accessibilityRole="button"
-                accessibilityLabel="Back"
-              >
-                <ChevronLeftIcon size={20} color={COLORS.primaryText} />
-                <Text style={styles.backBtnText}>Back</Text>
-              </Pressable>
-            ) : null}
-          </View>
+          <View style={styles.headerSide} />
 
           <Text style={styles.sheetTitle}>Book Workshop</Text>
 
@@ -257,247 +408,268 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-
-          {/* ─── STEP 0: Translator preference ─────────────────────────── */}
-          {step === 0 && (
-            <View>
-              <Text style={styles.stepTitle}>Book a translator?</Text>
-              <Text style={styles.stepSubtitle}>
-                Choose one of our curated translators for a smooth experience.
+          <View>
+            <Text style={styles.stepTitle}>Select a Session</Text>
+            {sessions.length === 0 ? (
+              <Text style={styles.noSessions}>
+                No sessions are currently available for this workshop.
               </Text>
+            ) : (
+              <View style={styles.sessionList}>
+                {sessions.map((session) => {
+                  // keep unavailable sessions visible but unselectable
+                  const isUnavailable = isSessionUnavailable(session);
+                  const isSelected = selectedSession?.id === session.id && !isUnavailable;
+                  // role-based label wording for locked sessions
+                  const unavailableLabel =
+                    canSeeBookedBadge && isSessionBooked(session) ? "Booked" : "Unavailable";
+                  const languageMatchCount = sessionTranslatorCountMap.get(session.id) || 0;
 
-              {/* Yes / No buttons */}
-              <View style={styles.optionRow}>
-                <Pressable
-                  style={[
-                    styles.optionBtn,
-                    needsTranslator === false && styles.optionBtnSelected,
-                  ]}
-                  onPress={() => {
-                    setNeedsTranslator(false);
-                    setSelectedLanguage(null);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="No translator needed"
-                >
-                  <Text
-                    style={[
-                      styles.optionBtnText,
-                      needsTranslator === false && styles.optionBtnTextSelected,
-                    ]}
-                  >
-                    No
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  style={[
-                    styles.optionBtn,
-                    needsTranslator === true && styles.optionBtnSelected,
-                  ]}
-                  onPress={() => setNeedsTranslator(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Yes, I need a translator"
-                >
-                  <Text
-                    style={[
-                      styles.optionBtnText,
-                      needsTranslator === true && styles.optionBtnTextSelected,
-                    ]}
-                  >
-                    Yes
-                  </Text>
-                </Pressable>
-              </View>
-
-              {/* Language picker — shown when user selects Yes */}
-              {needsTranslator === true && (
-                <View style={styles.languageSection}>
-                  <Text style={styles.subsectionLabel}>Select translation language</Text>
-                  <View style={styles.languageGrid}>
-                    {SUPPORTED_LANGUAGES.filter((l) => l !== "Japanese").map((lang) => (
-                      <Pressable
-                        key={lang}
-                        style={[
-                          styles.languageChip,
-                          selectedLanguage === lang && styles.languageChipSelected,
-                        ]}
-                        onPress={() => setSelectedLanguage(lang)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Select ${lang}`}
-                      >
+                  return (
+                    <Pressable
+                      key={session.id}
+                      style={[
+                        styles.sessionCard,
+                        isSelected && styles.sessionCardSelected,
+                        isUnavailable && styles.sessionCardUnavailable,
+                      ]}
+                      onPress={() => {
+                        if (!isUnavailable) {
+                          setSelectedSession(session);
+                        }
+                      }}
+                      disabled={isUnavailable}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Session ${formatSessionRowLabel(session)}`}
+                      accessibilityState={{ selected: isSelected, disabled: isUnavailable }}
+                    >
+                      <View style={styles.sessionMainInfo}>
                         <Text
                           style={[
-                            styles.languageChipText,
-                            selectedLanguage === lang && styles.languageChipTextSelected,
+                            styles.sessionDate,
+                            isSelected && styles.sessionDateSelected,
+                            isUnavailable && styles.sessionDateUnavailable,
                           ]}
                         >
-                          {lang}
+                          {formatSessionRowLabel(session)}
                         </Text>
-                      </Pressable>
-                    ))}
-                  </View>
+                        {isUnavailable && (
+                          <Text
+                            style={[
+                              styles.sessionUnavailableLabel,
+                              unavailableLabel === "Booked" && styles.sessionBookedLabel,
+                            ]}
+                          >
+                            {unavailableLabel}
+                          </Text>
+                        )}
+                        {needsTranslator && selectedLanguage && (
+                          <Text
+                            style={[
+                              styles.sessionMeta,
+                              isSelected && styles.sessionMetaSelected,
+                              isUnavailable && styles.sessionMetaUnavailable,
+                            ]}
+                          >
+                            {formatLanguageCountMessage(languageMatchCount, selectedLanguage, "for this session")}
+                          </Text>
+                        )}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
 
-                </View>
-              )}
-
-              {/* Next button */}
+            <Text style={[styles.stepTitle, { marginTop: 24 }]}>Participants</Text>
+            {!selectedSession && (
+              <Text style={styles.participantHint}>Choose a session first.</Text>
+            )}
+            <View style={styles.participantsRow}>
               <Pressable
-                style={[styles.nextBtn, !canProceedStep0 && styles.nextBtnDisabled]}
-                onPress={() => canProceedStep0 && setStep(1)}
-                disabled={!canProceedStep0}
+                style={[
+                  styles.counterBtn,
+                  (participants <= 1 || !selectedSession) && styles.counterBtnDisabled,
+                ]}
+                onPress={() => participants > 1 && selectedSession && setParticipants((p) => p - 1)}
+                disabled={participants <= 1 || !selectedSession}
                 accessibilityRole="button"
-                accessibilityLabel="Next step"
+                accessibilityLabel="Decrease participants"
               >
-                <Text style={styles.nextBtnText}>Next</Text>
-                <ChevronRightIcon size={18} color={COLORS.white} />
+                <Text style={styles.counterBtnText}>גˆ’</Text>
+              </Pressable>
+
+              <Text style={styles.participantCount}>{participants}</Text>
+
+              <Pressable
+                style={[
+                  styles.counterBtn,
+                  (participants >= maxParticipants || !selectedSession) && styles.counterBtnDisabled,
+                ]}
+                onPress={() =>
+                  participants < maxParticipants && selectedSession && setParticipants((p) => p + 1)
+                }
+                disabled={participants >= maxParticipants || !selectedSession}
+                accessibilityRole="button"
+                accessibilityLabel="Increase participants"
+              >
+                <Text style={styles.counterBtnText}>+</Text>
               </Pressable>
             </View>
-          )}
+            {participants >= maxParticipants && (
+              <Text style={styles.maxWarning}>You reached the maximum number of participants.</Text>
+            )}
 
-          {/* ─── STEP 1: Session + Participants + Cost ──────────────────── */}
-          {step === 1 && (
-            <View>
-              {/* Session selection */}
-              <Text style={styles.stepTitle}>Select a Session</Text>
-              {sessions.length === 0 ? (
-                <Text style={styles.noSessions}>
-                  No sessions are currently available for this workshop.
-                </Text>
-              ) : (
-                <View style={styles.sessionList}>
-                  {sessions.map((session) => {
-                    const isSelected = selectedSession?.id === session.id;
-                    return (
-                      <Pressable
-                        key={session.id}
-                        style={[styles.sessionCard, isSelected && styles.sessionCardSelected]}
-                        onPress={() => setSelectedSession(session)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Session on ${formatSessionDate(session.date)} at ${session.time}`}
-                        accessibilityState={{ selected: isSelected }}
-                      >
-                        <Text
-                          style={[styles.sessionDate, isSelected && styles.sessionDateSelected]}
-                        >
-                          {formatSessionDate(session.date)}
-                        </Text>
-                        <Text
-                          style={[styles.sessionTime, isSelected && styles.sessionTimeSelected]}
-                        >
-                          {session.time}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
+            <Text style={[styles.stepTitle, { marginTop: 24 }]}>Book a translator?</Text>
+            <Text style={styles.stepSubtitle}>
+              Choose one of our curated translators for a smooth experience.
+            </Text>
 
-              {/* Participants counter */}
-              <Text style={[styles.stepTitle, { marginTop: 28 }]}>Participants</Text>
-              <View style={styles.participantsRow}>
-                <Pressable
-                  style={[
-                    styles.counterBtn,
-                    participants <= 1 && styles.counterBtnDisabled,
-                  ]}
-                  onPress={() => participants > 1 && setParticipants((p) => p - 1)}
-                  disabled={participants <= 1}
-                  accessibilityRole="button"
-                  accessibilityLabel="Decrease participants"
-                >
-                  <Text style={styles.counterBtnText}>−</Text>
-                </Pressable>
+            <View style={styles.optionRow}>
+              <Pressable
+                style={[styles.optionBtn, !needsTranslator && styles.optionBtnSelected]}
+                onPress={() => setNeedsTranslator(false)}
+                accessibilityRole="button"
+                accessibilityLabel="No translator needed"
+              >
+                <Text style={[styles.optionBtnText, !needsTranslator && styles.optionBtnTextSelected]}>No</Text>
+              </Pressable>
 
-                <Text style={styles.participantCount}>{participants}</Text>
+              <Pressable
+                style={[styles.optionBtn, needsTranslator && styles.optionBtnSelected]}
+                onPress={() => setNeedsTranslator(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Yes, book a translator"
+              >
+                <Text style={[styles.optionBtnText, needsTranslator && styles.optionBtnTextSelected]}>Yes</Text>
+              </Pressable>
+            </View>
 
-                <Pressable
-                  style={[
-                    styles.counterBtn,
-                    participants >= maxParticipants && styles.counterBtnDisabled,
-                  ]}
-                  onPress={() =>
-                    participants < maxParticipants && setParticipants((p) => p + 1)
-                  }
-                  disabled={participants >= maxParticipants}
-                  accessibilityRole="button"
-                  accessibilityLabel="Increase participants"
-                >
-                  <Text style={styles.counterBtnText}>+</Text>
-                </Pressable>
-              </View>
-              {participants >= maxParticipants && (
-                <Text style={styles.maxWarning}>
-                  You reached the maximum number of participants for this workshop.
-                </Text>
-              )}
+            {loadingTranslators && (
+              <Text style={styles.statsText}>Checking translator availability...</Text>
+            )}
 
-              {/* Cost summary — updates live as participants/translator changes */}
-              <View style={styles.costSection}>
-                <Text style={styles.stepTitle}>Cost Summary</Text>
+            {!selectedSession ? (
+              <Text style={styles.statsText}>
+                {selectedLanguage
+                  ? formatLanguageCountMessage(areaTranslators.length, selectedLanguage, "in this area")
+                  : `${translatorsInAreaCount} translators available in this area`}
+              </Text>
+            ) : (
+              <Text style={styles.statsText}>
+                {selectedLanguage
+                  ? formatLanguageCountMessage(sessionTranslators.length, selectedLanguage, "for this session")
+                  : `${translatorsForSelectedSessionCount} translators available for this session`}
+              </Text>
+            )}
 
-                <View style={styles.costRow}>
-                  <Text style={styles.costLabel}>Price per participant</Text>
-                  <Text style={styles.costValue}>¥{pricePerPerson.toLocaleString()}</Text>
+            {needsTranslator && (
+              <View style={styles.languageSection}>
+                <Text style={styles.subsectionLabel}>Choose translation language</Text>
+                <View style={styles.languageGrid}>
+                  {SUPPORTED_LANGUAGES.filter((language) => language !== "Japanese").map((language) => (
+                    <Pressable
+                      key={language}
+                      style={[styles.languageChip, selectedLanguage === language && styles.languageChipSelected]}
+                      onPress={() => setSelectedLanguage(language)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Choose ${language}`}
+                    >
+                      <Text style={[styles.languageChipText, selectedLanguage === language && styles.languageChipTextSelected]}>
+                        {language}
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
 
-                <View style={styles.costRow}>
-                  <Text style={styles.costLabel}>Participants</Text>
-                  <Text style={styles.costValue}>{participants}</Text>
-                </View>
+                {!!selectedLanguage && !!selectedSession && (
+                  <View style={styles.translatorList}>
+                    {sessionTranslators.length === 0 ? (
+                      <Text style={styles.noSessions}>
+                        No matching translators available for this session.
+                      </Text>
+                    ) : (
+                      sessionTranslators.map((translator) => {
+                        const isSelected = selectedTranslator?.id === translator.id;
+                        const translatorRate = Number(
+                          translator?.translatorProfile?.hourlyRateYen || translator?.translatorProfile?.hourlyRate || 0
+                        );
 
-                {needsTranslator && (
-                  <View style={styles.costRow}>
-                    <Text style={styles.costLabel}>
-                      {matchedTranslator
-                        ? `Translator fee (${matchedTranslator.displayName})`
-                        : "Translator fee (no match yet)"}
-                    </Text>
-                    <Text style={styles.costValue}>
-                      {translatorCost > 0 ? `¥${translatorCost.toLocaleString()}` : "TBD"}
-                    </Text>
+                        return (
+                          <Pressable
+                            key={translator.id}
+                            style={[styles.translatorCard, isSelected && styles.translatorCardSelected]}
+                            onPress={() => setSelectedTranslator(translator)}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: isSelected }}
+                            accessibilityLabel={`Select translator ${translator.displayName || "Translator"}`}
+                          >
+                            <Text style={styles.translatorName}>{translator.displayName || "Translator"}</Text>
+                            <Text style={styles.translatorMeta}>
+                              Rating {Number(translator?.translatorProfile?.ratingAverage || 0).toFixed(1)} ({Number(translator?.translatorProfile?.ratingCount || 0)})
+                            </Text>
+                            <Text style={styles.translatorMeta}>ֲ¥{translatorRate.toLocaleString()} per hour</Text>
+                          </Pressable>
+                        );
+                      })
+                    )}
                   </View>
                 )}
+              </View>
+            )}
 
-                <View style={[styles.costRow, styles.costRowTotal]}>
-                  <Text style={styles.costTotalLabel}>Total</Text>
-                  <Text style={styles.costTotalValue}>¥{totalCost.toLocaleString()}</Text>
-                </View>
+            <View style={styles.costSection}>
+              <Text style={styles.stepTitle}>Cost Summary</Text>
+
+              <View style={styles.costRow}>
+                <Text style={styles.costLabel}>Price per participant</Text>
+                <Text style={styles.costValue}>ֲ¥{pricePerPerson.toLocaleString()}</Text>
               </View>
 
-              {/* Spacer so content clears the fixed confirm bar */}
-              <View style={{ height: 16 }} />
+              <View style={styles.costRow}>
+                <Text style={styles.costLabel}>Participants</Text>
+                <Text style={styles.costValue}>{participants}</Text>
+              </View>
+
+              <View style={styles.costRow}>
+                <Text style={styles.costLabel}>Translator fee</Text>
+                <Text style={styles.costValue}>
+                  {translatorCost > 0 ? `ֲ¥${translatorCost.toLocaleString()}` : "ֲ¥0"}
+                </Text>
+              </View>
+
+              <View style={[styles.costRow, styles.costRowTotal]}>
+                <Text style={styles.costTotalLabel}>Total</Text>
+                <Text style={styles.costTotalValue}>ֲ¥{totalCost.toLocaleString()}</Text>
+              </View>
             </View>
-          )}
+
+            <View style={{ height: 16 }} />
+          </View>
         </ScrollView>
 
-        {/* ── Fixed Confirm Booking bar (step 1 only) ────────────────────── */}
-        {step === 1 && (
-          <View style={styles.confirmBar}>
-            <Pressable
-              style={[
-                styles.confirmBtn,
-                (!canConfirm) && styles.confirmBtnDisabled,
-              ]}
-              onPress={handleConfirm}
-              disabled={!canConfirm}
-              accessibilityRole="button"
-              accessibilityLabel="Confirm Booking"
-            >
-              {submitting ? (
-                <ActivityIndicator color={COLORS.white} />
-              ) : (
-                <Text style={styles.confirmBtnText}>Confirm Booking</Text>
-              )}
-            </Pressable>
-          </View>
-        )}
+        {/* Fixed Confirm Booking bar */}
+        <View style={styles.confirmBar}>
+          <Pressable
+            style={[styles.confirmBtn, !canConfirm && styles.confirmBtnDisabled]}
+            onPress={handleConfirm}
+            disabled={!canConfirm}
+            accessibilityRole="button"
+            accessibilityLabel="Confirm Booking"
+          >
+            {submitting ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <Text style={styles.confirmBtnText}>Confirm Booking</Text>
+            )}
+          </Pressable>
+        </View>
       </View>
     </Modal>
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+// ג”€ג”€ג”€ Styles ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 
 const styles = StyleSheet.create({
   // Semi-transparent dark overlay behind the sheet
@@ -535,7 +707,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
-  // ── Header ───────────────────────────────────────────────────────────────
+  // ג”€ג”€ Header ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   sheetHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -565,19 +737,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignSelf: "flex-end",
   },
-  backBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    alignSelf: "flex-start",
-  },
-  backBtnText: {
-    fontSize: 14,
-    color: COLORS.primaryText,
-    fontWeight: "600",
-  },
 
-  // ── Body ─────────────────────────────────────────────────────────────────
+  // ג”€ג”€ Body ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   sheetBody: {
     flex: 1,
   },
@@ -586,7 +747,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
 
-  // ── Step headings ─────────────────────────────────────────────────────────
+  // ג”€ג”€ Step headings ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   stepTitle: {
     fontSize: 16,
     fontWeight: "700",
@@ -600,7 +761,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  // ── Translator Yes/No buttons ─────────────────────────────────────────────
+  // ג”€ג”€ Translator Yes/No buttons ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   optionRow: {
     flexDirection: "row",
     gap: 12,
@@ -629,7 +790,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
 
-  // ── Language grid ─────────────────────────────────────────────────────────
+  // ג”€ג”€ Language grid ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   languageSection: {
     marginBottom: 24,
   },
@@ -664,35 +825,40 @@ const styles = StyleSheet.create({
   languageChipTextSelected: {
     color: COLORS.white,
   },
-
-  // ── Next button ───────────────────────────────────────────────────────────
-  nextBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
+  translatorList: {
+    marginTop: 14,
+    gap: 10,
+  },
+  translatorCard: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
     borderRadius: 12,
-    backgroundColor: COLORS.primaryText,
-    gap: 6,
-    marginTop: 4,
+    padding: 12,
+    backgroundColor: COLORS.white,
   },
-  nextBtnDisabled: {
-    backgroundColor: "#CCC",
+  translatorCardSelected: {
+    borderColor: COLORS.approved,
+    backgroundColor: COLORS.cardBackground,
   },
-  nextBtnText: {
-    fontSize: 15,
+  translatorName: {
+    fontSize: 14,
     fontWeight: "700",
-    color: COLORS.white,
+    color: COLORS.primaryText,
+  },
+  translatorMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    color: COLORS.secondaryText,
   },
 
-  // ── Session cards ─────────────────────────────────────────────────────────
+  // ג”€ג”€ Session cards ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   sessionList: {
     gap: 10,
     marginBottom: 4,
   },
   sessionCard: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     alignItems: "center",
     padding: 14,
     borderRadius: 18,
@@ -704,6 +870,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primaryText,
     backgroundColor: COLORS.primaryText,
   },
+  sessionCardUnavailable: {
+    borderColor: "#D2D2D2",
+    backgroundColor: "#F1F1F1",
+  },
   sessionDate: {
     fontSize: 14,
     fontWeight: "600",
@@ -712,13 +882,33 @@ const styles = StyleSheet.create({
   sessionDateSelected: {
     color: COLORS.white,
   },
-  sessionTime: {
-    fontSize: 14,
+  sessionDateUnavailable: {
+    color: "#8A8A8A",
+  },
+  sessionMainInfo: {
+    flex: 1,
+  },
+  sessionUnavailableLabel: {
+    marginTop: 6,
+    fontSize: 12,
     fontWeight: "700",
+    color: "#777777",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  sessionBookedLabel: {
+    color: COLORS.approved,
+  },
+  sessionMeta: {
+    marginTop: 6,
+    fontSize: 12,
     color: COLORS.secondaryText,
   },
-  sessionTimeSelected: {
-    color: COLORS.white,
+  sessionMetaSelected: {
+    color: "rgba(255,255,255,0.9)",
+  },
+  sessionMetaUnavailable: {
+    color: "#9A9A9A",
   },
   noSessions: {
     fontSize: 14,
@@ -726,8 +916,19 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginBottom: 16,
   },
+  participantHint: {
+    fontSize: 13,
+    color: COLORS.secondaryText,
+    marginBottom: 8,
+  },
+  statsText: {
+    fontSize: 13,
+    color: COLORS.secondaryText,
+    marginTop: -2,
+    marginBottom: 14,
+  },
 
-  // ── Participants counter ───────────────────────────────────────────────────
+  // ג”€ג”€ Participants counter ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   participantsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -768,7 +969,7 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
 
-  // ── Cost breakdown ────────────────────────────────────────────────────────
+  // ג”€ג”€ Cost breakdown ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   costSection: {
     marginTop: 20,
     borderRadius: 12,
@@ -811,7 +1012,7 @@ const styles = StyleSheet.create({
     color: COLORS.primaryText,
   },
 
-  // ── Fixed confirm bar ─────────────────────────────────────────────────────
+  // ג”€ג”€ Fixed confirm bar ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   confirmBar: {
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -836,3 +1037,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 });
+
