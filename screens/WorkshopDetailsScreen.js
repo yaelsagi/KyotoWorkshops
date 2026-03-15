@@ -366,7 +366,7 @@ export default function WorkshopDetailsScreen({ route, navigation }) {
       <View style={styles.fixedBottom}>
         <View style={styles.priceSection}>
           <Text style={styles.priceLabel}>Price</Text>
-          <Text style={styles.priceValue}>ֲ¥{workshop.priceYen.toLocaleString()}</Text>
+          <Text style={styles.priceValue}>¥{workshop.priceYen.toLocaleString()}</Text>
           <Text style={styles.priceUnit}>Per person</Text>
         </View>
 

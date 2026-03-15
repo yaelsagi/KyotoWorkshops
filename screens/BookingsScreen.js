@@ -118,7 +118,7 @@ export default function BookingsScreen({ navigation }) {
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Price</Text>
-            <Text style={styles.infoValue}>ֲ¥{item.priceYen.toLocaleString()}</Text>
+            <Text style={styles.infoValue}>¥{item.priceYen.toLocaleString()}</Text>
           </View>
         </View>
         

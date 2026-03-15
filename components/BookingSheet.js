@@ -1,5 +1,4 @@
-﻿// Progress: this component is implemented and currently stable in the app UI flow.
-// components/BookingSheet.js
+﻿// components/BookingSheet.js
 // Session-first booking sheet:
 // 1) session, 2) participants, 3) translator options, 4) confirm booking.
 
@@ -23,7 +22,7 @@ import { SUPPORTED_LANGUAGES } from "../constants/supportedLanguages";
 import { createBooking } from "../services/bookingService";
 import { fetchApprovedTranslators, getMatchingTranslators } from "../services/translatorService";
 
-// ג”€ג”€ג”€ Helpers ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+// Helpers
 
 function formatSessionDate(dateStr) {
   if (!dateStr) return "";
@@ -44,7 +43,7 @@ function formatSessionRowLabel(session) {
     return "";
   }
   const dateLabel = formatSessionDate(session.date);
-  return `${dateLabel} ג€” ${session.time || ""}`;
+  return `${dateLabel} - ${session.time || ""}`;
 }
 
 function formatLanguageCountMessage(count, language, stageLabel) {
@@ -127,7 +126,7 @@ function isSessionBooked(session) {
   return status === "booked";
 }
 
-// ג”€ג”€ג”€ Component ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+// Component
 
 export default function BookingSheet({ visible, onClose, onBooked, workshop, currentUser }) {
   // Session and participant selections come first in this flow.
@@ -139,14 +138,14 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
   const [selectedLanguage, setSelectedLanguage] = useState(null);
   const [selectedTranslator, setSelectedTranslator] = useState(null);
 
-  // ג”€ג”€ Translator matching state ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Translator matching state
   const [translators, setTranslators] = useState([]);
   const [loadingTranslators, setLoadingTranslators] = useState(false);
 
-  // ג”€ג”€ Submission state ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Submission state
   const [submitting, setSubmitting] = useState(false);
 
-  // ג”€ג”€ Derived workshop values with safe fallbacks ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Derived workshop values with safe fallbacks
   const sessions = workshop?.sessions || [];
   const maxParticipants = workshop?.maxParticipants || 8;
   const pricePerPerson =
@@ -157,7 +156,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
   // show booked label only to host and admin roles
   const canSeeBookedBadge = Boolean(currentUser?.roles?.admin || currentUser?.roles?.host);
 
-  // ג”€ג”€ Reset all state whenever the sheet opens ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Reset all state whenever the sheet opens
   useEffect(() => {
     if (visible) {
       setSelectedSession(null);
@@ -283,7 +282,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
     }).length;
   }, [selectedSession, translators, workshop?.ward]);
 
-  // ג”€ג”€ Cost calculation ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Cost calculation
   const totalWorkshopCost = pricePerPerson * participants;
   const translatorHourlyRate =
     needsTranslator && selectedTranslator
@@ -311,7 +310,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
     translatorSelectionValid &&
     !submitting;
 
-  // ג”€ג”€ Booking submission ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Booking submission
   const handleConfirm = async () => {
     if (!canConfirm) return;
 
@@ -366,7 +365,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
     }
   };
 
-  // ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Render
 
   return (
     <Modal
@@ -375,7 +374,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
       animationType="slide"
       onRequestClose={onClose}
     >
-      {/* Dark overlay ג€” tapping closes the sheet */}
+      {/* Dark overlay - tapping closes the sheet */}
       <Pressable style={styles.overlay} onPress={onClose} />
 
       {/* Bottom sheet */}
@@ -496,7 +495,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
                 accessibilityRole="button"
                 accessibilityLabel="Decrease participants"
               >
-                <Text style={styles.counterBtnText}>גˆ’</Text>
+                <Text style={styles.counterBtnText}>-</Text>
               </Pressable>
 
               <Text style={styles.participantCount}>{participants}</Text>
@@ -608,7 +607,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
                             <Text style={styles.translatorMeta}>
                               Rating {Number(translator?.translatorProfile?.ratingAverage || 0).toFixed(1)} ({Number(translator?.translatorProfile?.ratingCount || 0)})
                             </Text>
-                            <Text style={styles.translatorMeta}>ֲ¥{translatorRate.toLocaleString()} per hour</Text>
+                            <Text style={styles.translatorMeta}>¥{translatorRate.toLocaleString()} per hour</Text>
                           </Pressable>
                         );
                       })
@@ -623,7 +622,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
 
               <View style={styles.costRow}>
                 <Text style={styles.costLabel}>Price per participant</Text>
-                <Text style={styles.costValue}>ֲ¥{pricePerPerson.toLocaleString()}</Text>
+                <Text style={styles.costValue}>¥{pricePerPerson.toLocaleString()}</Text>
               </View>
 
               <View style={styles.costRow}>
@@ -634,13 +633,13 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
               <View style={styles.costRow}>
                 <Text style={styles.costLabel}>Translator fee</Text>
                 <Text style={styles.costValue}>
-                  {translatorCost > 0 ? `ֲ¥${translatorCost.toLocaleString()}` : "ֲ¥0"}
+                  {translatorCost > 0 ? `¥${translatorCost.toLocaleString()}` : "¥0"}
                 </Text>
               </View>
 
               <View style={[styles.costRow, styles.costRowTotal]}>
                 <Text style={styles.costTotalLabel}>Total</Text>
-                <Text style={styles.costTotalValue}>ֲ¥{totalCost.toLocaleString()}</Text>
+                <Text style={styles.costTotalValue}>¥{totalCost.toLocaleString()}</Text>
               </View>
             </View>
 
@@ -669,7 +668,7 @@ export default function BookingSheet({ visible, onClose, onBooked, workshop, cur
   );
 }
 
-// ג”€ג”€ג”€ Styles ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+// Styles
 
 const styles = StyleSheet.create({
   // Semi-transparent dark overlay behind the sheet
@@ -707,7 +706,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
-  // ג”€ג”€ Header ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Header
   sheetHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -738,7 +737,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
   },
 
-  // ג”€ג”€ Body ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Body
   sheetBody: {
     flex: 1,
   },
@@ -747,7 +746,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
 
-  // ג”€ג”€ Step headings ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Step headings
   stepTitle: {
     fontSize: 16,
     fontWeight: "700",
@@ -761,7 +760,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  // ג”€ג”€ Translator Yes/No buttons ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Translator Yes/No buttons
   optionRow: {
     flexDirection: "row",
     gap: 12,
@@ -790,7 +789,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
 
-  // ג”€ג”€ Language grid ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Language grid
   languageSection: {
     marginBottom: 24,
   },
@@ -851,7 +850,7 @@ const styles = StyleSheet.create({
     color: COLORS.secondaryText,
   },
 
-  // ג”€ג”€ Session cards ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Session cards
   sessionList: {
     gap: 10,
     marginBottom: 4,
@@ -928,7 +927,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  // ג”€ג”€ Participants counter ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Participants counter
   participantsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -969,7 +968,7 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
 
-  // ג”€ג”€ Cost breakdown ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Cost breakdown
   costSection: {
     marginTop: 20,
     borderRadius: 12,
@@ -1012,7 +1011,7 @@ const styles = StyleSheet.create({
     color: COLORS.primaryText,
   },
 
-  // ג”€ג”€ Fixed confirm bar ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+  // Fixed confirm bar
   confirmBar: {
     paddingHorizontal: 20,
     paddingTop: 12,

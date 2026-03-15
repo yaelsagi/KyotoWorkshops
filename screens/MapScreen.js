@@ -234,8 +234,8 @@ export default function MapScreen({ navigation }) {
     });
 
     if (appliedFilters.minPrice !== null || appliedFilters.maxPrice !== null) {
-      const minLabel = appliedFilters.minPrice !== null ? `ֲ¥${Number(appliedFilters.minPrice).toLocaleString()}` : "Any";
-      const maxLabel = appliedFilters.maxPrice !== null ? `ֲ¥${Number(appliedFilters.maxPrice).toLocaleString()}` : "Any";
+      const minLabel = appliedFilters.minPrice !== null ? `¥${Number(appliedFilters.minPrice).toLocaleString()}` : "Any";
+      const maxLabel = appliedFilters.maxPrice !== null ? `¥${Number(appliedFilters.maxPrice).toLocaleString()}` : "Any";
       chips.push({
         key: "price-range",
         label: `${minLabel} - ${maxLabel}`,
@@ -380,7 +380,7 @@ export default function MapScreen({ navigation }) {
             {selected.isTop ? " ֲ· Top" : ""}
           </Text>
 
-          <Text style={styles.cardPrice}>ֲ¥{selected.priceYen.toLocaleString()}</Text>
+          <Text style={styles.cardPrice}>¥{selected.priceYen.toLocaleString()}</Text>
 
           <View style={styles.cardActionsRow}>
             <Pressable

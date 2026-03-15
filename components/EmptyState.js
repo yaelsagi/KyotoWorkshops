@@ -24,6 +24,7 @@ export default function EmptyState({ icon, title, message, buttonLabel, onButton
   );
 }
 
+//styles:
 const styles = StyleSheet.create({
   container: {
     flex: 1,

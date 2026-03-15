@@ -131,7 +131,7 @@ export default function MyWorkshopsScreen({ navigation }) {
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Price</Text>
-              <Text style={styles.infoValue}>ֲ¥{Number(item.priceYen || 0).toLocaleString()}</Text>
+              <Text style={styles.infoValue}>¥{Number(item.priceYen || 0).toLocaleString()}</Text>
             </View>
           </View>
 

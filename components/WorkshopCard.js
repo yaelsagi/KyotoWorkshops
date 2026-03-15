@@ -1,5 +1,4 @@
-﻿// Progress: this component is implemented and currently stable in the app UI flow.
-// Reusable workshop card for browse and favourites lists
+﻿// Reusable workshop card 
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
@@ -8,7 +7,7 @@ import { COLORS } from '../styles/colors';
 import TopWorkshopTag from './TopWorkshopTag';
 
 export default function WorkshopCard({ workshop, onPress, onFavouriteToggle }) {
-  // Track image loading state per card instance
+  // image loading state for each card instance
   const [imageLoading, setImageLoading] = useState(true);
   const firstImageUrl = workshop.images && workshop.images.length > 0
     ? workshop.images[0]
@@ -28,7 +27,7 @@ export default function WorkshopCard({ workshop, onPress, onFavouriteToggle }) {
             {imageLoading && (
               <ActivityIndicator
                 size="small"
-                color="#8B7B6B"
+                color={COLORS.imagePlaceholderIcon}
                 style={StyleSheet.absoluteFill}
               />
             )}
@@ -81,7 +80,7 @@ export default function WorkshopCard({ workshop, onPress, onFavouriteToggle }) {
 
         <View style={styles.cardFooter}>
           <Text style={styles.cardLocation}>{workshop.ward}</Text>
-          <Text style={styles.cardPrice}>ֲ¥{workshop.priceYen.toLocaleString()}</Text>
+          <Text style={styles.cardPrice}>¥{workshop.priceYen.toLocaleString()}</Text>
         </View>
       </View>
     </Pressable>

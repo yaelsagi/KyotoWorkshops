@@ -1,12 +1,11 @@
-﻿// Progress: this component is implemented and currently stable in the app UI flow.
-// components/FiltersSheet.js
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+﻿import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Modal, View, Text, StyleSheet, Pressable, Switch, Platform, ScrollView } from "react-native";
 import { XMarkIcon } from "react-native-heroicons/outline";
 import { LinearGradient } from "expo-linear-gradient";
 import { ALL_OPTION } from "../constants/kyotoWards";
 import MultiSlider from "@ptomasroos/react-native-multi-slider";
 import { applyFilters } from "../utils/filters";
+import { COLORS } from "../styles/colors";
 
 export default function FiltersSheet({
   visible,
@@ -163,7 +162,7 @@ export default function FiltersSheet({
               accessibilityRole="button"
               accessibilityLabel="Close filters"
             >
-              <XMarkIcon size={18} color="#333" />
+              <XMarkIcon size={18} color={COLORS.primaryText} />
             </Pressable>
           </View>
 
@@ -295,7 +294,7 @@ export default function FiltersSheet({
 
             <View style={styles.block}>
               <Text style={styles.label}>Price range</Text>
-              <Text style={styles.help}>ֲ¥{currentMin.toLocaleString()} - ֲ¥{safeMax.toLocaleString()}</Text>
+              <Text style={styles.help}>¥{currentMin.toLocaleString()} - ¥{safeMax.toLocaleString()}</Text>
 
               <View
                 style={styles.rangeSliderWrap}
@@ -362,16 +361,17 @@ export default function FiltersSheet({
   );
 }
 
+//styles:
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.25)" },
   backdropTap: { flex: 1 },
 
   sheet: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     borderWidth: 1,
-    borderColor: "#E6E2DA",
+    borderColor: COLORS.border,
     height: "78%",
     minHeight: 420,
     maxHeight: "84%",
@@ -384,14 +384,14 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 10,
   },
-  title: { flex: 1, fontSize: 16, fontWeight: "800", color: "#1F1F1F" },
+  title: { flex: 1, fontSize: 16, fontWeight: "800", color: COLORS.primaryText },
   close: {
     width: 40,
     height: 40,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F5F1E8",
+    backgroundColor: COLORS.imagePlaceholderBackground,
   },
 
   scrollArea: {
@@ -403,8 +403,8 @@ const styles = StyleSheet.create({
 
   block: { marginTop: 14 },
 
-  label: { fontSize: 13, fontWeight: "700", color: "#1F1F1F" },
-  help: { fontSize: 12, color: "#666", marginTop: 2 },
+  label: { fontSize: 13, fontWeight: "700", color: COLORS.primaryText },
+  help: { fontSize: 12, color: COLORS.secondaryText, marginTop: 2 },
 
   switchRow: {
     marginTop: 12,
@@ -413,9 +413,9 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 12,
     borderRadius: 14,
-    backgroundColor: "#FBFAF7",
+    backgroundColor: COLORS.cardBackground,
     borderWidth: 1,
-    borderColor: "#E6E2DA",
+    borderColor: COLORS.border,
   },
 
   chipsWrap: {
@@ -429,26 +429,26 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#D8D2C5",
-    backgroundColor: "#FFFFFF",
+    borderColor: COLORS.strongBorder,
+    backgroundColor: COLORS.white,
   },
   chipSelected: {
-    backgroundColor: "#1F1F1F",
-    borderColor: "#1F1F1F",
+    backgroundColor: COLORS.primaryText,
+    borderColor: COLORS.primaryText,
   },
   chipText: {
     fontSize: 12,
-    color: "#1F1F1F",
+    color: COLORS.primaryText,
     fontWeight: "600",
   },
   chipTextSelected: {
-    color: "#FFFFFF",
+    color: COLORS.white,
   },
 
   sliderHint: {
     marginTop: 6,
     fontSize: 11,
-    color: "#666",
+    color: COLORS.secondaryText,
   },
 
   rangeSliderWrap: {
@@ -458,33 +458,33 @@ const styles = StyleSheet.create({
   },
 
   multiSliderSelectedTrack: {
-    backgroundColor: "#1F1F1F",
+    backgroundColor: COLORS.primaryText,
     height: 4,
   },
   multiSliderUnselectedTrack: {
-    backgroundColor: "#D8D2C5",
+    backgroundColor: COLORS.strongBorder,
     height: 4,
   },
   multiSliderMarker: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#1F1F1F",
+    backgroundColor: COLORS.primaryText,
     borderWidth: 2,
-    borderColor: "#FFFFFF",
+    borderColor: COLORS.white,
   },
   multiSliderMarkerPressed: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "#1F1F1F",
+    backgroundColor: COLORS.primaryText,
   },
 
   sliderLabel: {
     marginTop: 12,
     fontSize: 12,
     fontWeight: "600",
-    color: "#333",
+    color: COLORS.primaryText,
   },
 
   scrollBottomSpacer: {
@@ -504,8 +504,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: Platform.OS === "ios" ? 14 : 8,
     borderTopWidth: 1,
-    borderTopColor: "#E6E2DA",
-    backgroundColor: "#FFFFFF",
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.white,
   },
 
   actionsRow: { flexDirection: "row", gap: 10 },
@@ -514,12 +514,12 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E6E2DA",
+    borderColor: COLORS.border,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
   },
-  clearText: { fontWeight: "800", color: "#1F1F1F" },
+  clearText: { fontWeight: "800", color: COLORS.primaryText },
 
   applyBtn: {
     flex: 1,
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1F1F1F",
+    backgroundColor: COLORS.primaryText,
   },
-  applyText: { fontWeight: "800", color: "#FFFFFF" },
+  applyText: { fontWeight: "800", color: COLORS.white },
 });
